@@ -10,7 +10,7 @@
 
 **Balázs:** Az első játék a "Zuti clicker", az alapkoncepció a cookie clicker-hez hasonló, kattintgatós, fejlesztgetős játék. A fő feladatunk minél több tokent összegyűjteni Zutinak. 
 
-**Attila:** Igen! De kattintgatni elég unalmas önmagában, ezért lehet fejlesztéseket is venned, amitől meg több tokent tudsz gyűjteni, mint például katalógusok és sátrak. Lesznek quick time eventek is, amikor gyorsan rá kell kattintanod egy konferencia ikonra és az AI konferencia miatt XP boost-ot kapsz egy kis időre.
+**Attila:** Igen! De kattintgatni elég unalmas önmagában, ezért lehet fejlesztéseket is venned, amitől meg több tokent tudsz gyűjteni, mint például katalógusokat és sátrakat. Lesznek quick time eventek is, amikor gyorsan rá kell kattintanod egy konferencia ikonra és az AI konferencia miatt XP boost-ot kapsz egy kis időre.
 
 ## Dia 3 (30mp perc)
 
@@ -20,7 +20,7 @@
 
 **Attila:** A következő játék a "Hood Driver" névre hallgat. Ez egy 2D-s taxi simulator szerű felülnézetes játék, amiben a hood, azaz a gettó, a város keményebb negyedeiben kell dolgoznod. Nem elég az, hogy az ügyfeledet eljuttatod "A" pontból "B" pontba, de egy darabban is kell lennie és nem csak neki de az autódnak is.
 
-**Balázs:** Minél több pénzt kapsz, annál gyorsabb vagy, viszont a kocsid megjavítása is pénzbe kerül. Továbbá különböző fejlesztéseket is tudsz venni az autódhoz, így strapabíróbb lesz vagy ha a kinézetére mész rá, akkor az ügyfelek minősége javul és tehetősebb embereket tudsz felvenni, akik többet perkálnak apucinak.
+**Balázs:** Minél több pénzt kapsz, annál gyorsabb vagy, viszont a kocsid megjavítása is pénzbe kerül. Továbbá különböző fejlesztéseket is tudsz venni az autódhoz, így strapabíróbb lesz vagy ha a kinézetére mész rá, akkor az ügyfelek minősége javul és tehetősebb embereket tudsz felvenni, akik több profitot hoznak a kasszához.
 
 ## Dia 5 (30mp perc)
 
@@ -28,7 +28,7 @@
 
 ## Dia 6 (1 perc)
 
-**Balázs:** Végül az ÉN személyes kedvencem: a "Love beam". Ez egy 2D puzzle platformer-shooter. Itt a szeretet erejével kell küzdened, akit eltalálsz az bele fog szeretni a következő kis szörnyecskébe, ezzel teljesít egy adott feltételt, ami megvan szabva a pályához és mehetsz tovább a következőre.
+**Balázs:** Végül az utolsó ötletünk: a "Love beam". Ez egy 2D puzzle platformer-shooter. Itt a szeretet erejével kell küzdened, akit eltalálsz az bele fog szeretni a következő kis szörnybe, ezzel teljesít egy adott feltételt, ami megvan szabva a pályához és mehetsz tovább a következőre.
 
 ## Dia 7 (1 perc)
 
@@ -36,4 +36,4 @@
 
 ## Dia 8 (30mp)
 
-**Balázs:** Ennyi is lett volna a mi kis bemutatónk, köszönjük szépen a figyelmet, ha van bármiféle kérdés szívesen válaszolunk rá.
+**Balázs:** Ennyi is lett volna a gyors, átfogó bemutatónk, köszönjük szépen a figyelmet, ha van bármiféle kérdés szívesen válaszolunk rá.
