@@ -38,3 +38,37 @@ A lent található részletes bekezdések bemutatják, milyen technológiák has
 - **Frontenden és backenden használt programozási nyelv:** TypeScript
 - **Adatbázis:** MariaDB
 - **ORM (Object-relational mapping / OOP):** Prisma
+- **Csomagkezelő:** pnpm
+
+### Tervezett mappastruktúra
+
+```
+zuti-clicker/
+├── src/
+│   ├── controllers/
+│   │   ├── auth.ts
+│   │   ├── ...
+│   ├── helpers/
+│   │   ├── index.ts
+│   │   ├── text.ts
+│   │   ├── ...
+│   ├── router/
+│   │   ├── auth.ts
+│   │   ├── index.ts
+│   │   ├── users.ts
+│   │   ├── ...
+│   ├── tests/
+│   │   ├── auth.ts
+│   │   ├── users.ts
+│   │   ├── ...
+│   └── index.ts
+├── .env.example
+├── .gitignore
+├── .prettierignore
+├── .prettierrc.json
+├── jest.config.js
+├── nodemon.json
+├── package.json
+├── pnpm-lock.yaml
+└── tsconfig.json
+```
