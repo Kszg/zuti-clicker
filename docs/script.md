@@ -10,7 +10,7 @@
 
 *Ati:* Igen! De kattintgatni elég unalmas önmagában, ezért lehet fejlesztéseket is venned, amitől meg több tokent tudsz gyűjteni, mint például katalógusok és sátrak. Lesznek quick time eventek is, amikor gyorsan rá kell kattintanod egy konferencia ikonra és az AI konferencia miatt XP boost-ot kapsz egy kis időre.
 
-**Dia 3** (30mp perc)
+**Dia 3** (30mp)
 
 *Vágvölgyi:* A játék célközönsége, akik szeretik a háttérben futó játékokat, amik mellette fejlődés alapúak is. A monetizáció, hogy még több pénzt szerezzünk, pedig abból jönne hogy a játékos tudna időleges boostereket venni a gyorsabb fejlődés érdekében.
 
