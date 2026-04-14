@@ -1,4 +1,4 @@
-﻿﻿# Forgatókönyv
+﻿# Forgatókönyv
 
 ## Dia 1 (30mp)
 
@@ -16,7 +16,7 @@
 
 **Balázs:** A játék célközönsége, akik szeretik a háttérben futó játékokat, amik mellette fejlődés alapúak is. A monetizáció, hogy még több pénzt szerezzünk, pedig abból jönne hogy a játékos tudna időleges boostereket venni a gyorsabb fejlődés érdekében.
 
- ## Dia 4 (1 perc)
+## Dia 4 (1 perc)
 
 **Attila:** A következő játék a "Hood Driver" névre hallgat. Ez egy 2D-s taxi simulator szerű felülnézetes játék, amiben a hood, azaz a gettó, a város keményebb negyedeiben kell dolgoznod. Nem elég az, hogy az ügyfeledet eljuttatod "A" pontból "B" pontba, de egy darabban is kell lennie és nem csak neki de az autódnak is.
 
