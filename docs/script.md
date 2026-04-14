@@ -1,6 +1,6 @@
 ﻿﻿# Forgatókönyv
 
-## Dia 1 (30mp)
+## Dia 1 (30 másodperc)
 
 **Attila:** Sziasztok! Ma ütős játék ötleteket hoztunk el, amik a fejünkből pattantak ki. Mindegyik játékban egy másik világot fedezhetünk fel, különböző mechanikákkal.
 
@@ -12,7 +12,7 @@
 
 **Attila:** Igen! De kattintgatni elég unalmas önmagában, ezért lehet fejlesztéseket is venned, amitől meg több tokent tudsz gyűjteni, mint például katalógusokat és sátrakat. Lesznek quick time eventek is, amikor gyorsan rá kell kattintanod egy konferencia ikonra és az AI konferencia miatt XP boost-ot kapsz egy kis időre.
 
-## Dia 3 (30mp perc)
+## Dia 3 (30 másodperc)
 
 **Balázs:** A játék célközönsége, akik szeretik a háttérben futó játékokat, amik mellette fejlődés alapúak is. A monetizáció, hogy még több pénzt szerezzünk, pedig abból jönne hogy a játékos tudna időleges boostereket venni a gyorsabb fejlődés érdekében.
 
