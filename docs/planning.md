@@ -39,6 +39,9 @@ A lent található részletes bekezdések bemutatják, milyen technológiák has
 - **Adatbázis:** MariaDB
 - **ORM (Object-relational mapping / OOP):** Prisma
 - **Csomagkezelő:** pnpm
+- **Konténerizáció:** Docker
+- **Hosting:** Itthoni szerver
+- **Biztonság / csatlakozás:** Cloudflare
 
 ### Tervezett mappastruktúra
 
