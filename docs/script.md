@@ -1,4 +1,4 @@
-﻿# Forgatókönyv
+﻿﻿# Forgatókönyv
 
 ## Dia 1 (30mp)
 
@@ -22,7 +22,7 @@
 
 **Balázs:** Minél több pénzt kapsz, annál gyorsabb vagy, viszont a kocsid megjavítása is pénzbe kerül. Továbbá különböző fejlesztéseket is tudsz venni az autódhoz, így strapabíróbb lesz vagy ha a kinézetére mész rá, akkor az ügyfelek minősége javul és tehetősebb embereket tudsz felvenni, akik több profitot hoznak a kasszához.
 
-## Dia 5 (30mp perc)
+## Dia 5 (30 másodperc)
 
 **Attila:** Ebben a játékban morális döntéseket is kell hoznod például az esetleges bandaháborúk közepén vagy a gyanús alakok felvételével kapcsolatban. A játék vége az, hogy kitörsz a gettó negyedei közül és elkezded a normális életet. A célközönség, akik szeretik a chilles történet alapú játékokat és próbára tenni magukat morális kérdésekben. A monetizáció tekintetében pedig különböző kinézeteket lehetne venni a taxidhoz.
 
@@ -34,6 +34,6 @@
 
 **Attila:** Lesznek különböző akadályok is a pályákon, mint például ilyen "ragacs tenger" amiben meghalsz, illetve éles tüskék. A különböző féle párok nem kompatibiles egymással és nem tudod teljesíteni a pályát. A játék minden korosztálynak megfelel, aki szereti az agyát tornásztatni. Monetizáció tekintetében pedig át tudod varázsolni a karaktered egy cuki anime lánnyá, így még jobban szívet melengető lesz a játék ~*smirking*.
 
-## Dia 8 (30mp)
+## Dia 8 (30 másodperc)
 
 **Balázs:** Ennyi is lett volna a gyors, átfogó bemutatónk, köszönjük szépen a figyelmet, ha van bármiféle kérdés szívesen válaszolunk rá.
