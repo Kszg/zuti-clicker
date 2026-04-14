@@ -21,6 +21,10 @@ Olyan professzinális szakszavakat használt, melyek örökké az emlékeinkben 
 
 ## Játékmenet, felépítés
 
+### Felhasználói elmény, lehetséges interakciók sorrendje
 
+1. A játékos az oldal megnyitásakor Dr. Zuti Pál személyével találkozik egy körben ábrázolva.
+2. A képre kattintáskor tokeneket gyűjthet.
+3. A tokeneket különböző fejlesztésekre költheti, melyek **elősegítik a manuális tokenszerzést**, valamint **automatizálják ezt a folyamatot**.
 
 ## Technikai specifikációk
