@@ -5,6 +5,22 @@ Az alábbi bekezdésekben részletesen kifejtettük az elémeli, gyakorlati és 
 
 ## Áttekintés
 
+Egy szimpla böngészőben futó *idle* játék, melyben a játékos feladata egyszerű:
+
+  - Dr. Zuti Pál fejére kattingatni
+  - Ebből tokeneket szerezni
+  - Automatizálni a folyamatot
+
+### Kontextus
+
+**A játék egy volt tanárunk tiszteletére készül, aki már elhagyta a Neumannt.**
+
+Olyan professzinális szakszavakat használt, melyek örökké az emlékeinkben maradtak, ezekre ezzel a projekttel is megemlékezünk.
+
+**A felhasznált képek publikusak, nem sértenek személyiségi jogokat.** A projekt egy tiszteletteljes emlék volt tanárunknak.
+
 ## Játékmenet, felépítés
+
+
 
 ## Technikai specifikációk
