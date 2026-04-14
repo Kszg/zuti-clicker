@@ -28,3 +28,13 @@ Olyan professzinális szakszavakat használt, melyek örökké az emlékeinkben 
 3. A tokeneket különböző fejlesztésekre költheti, melyek **elősegítik a manuális tokenszerzést**, valamint **automatizálják ezt a folyamatot**.
 
 ## Technikai specifikációk
+
+A lent található részletes bekezdések bemutatják, milyen technológiák használatával fogjuk megalósítani a projektet.
+
+### Tech-stack
+
+- **Frontend:** Vue.js
+- **Backend (API)**: Express.js
+- **Frontenden és backenden használt programozási nyelv:** TypeScript
+- **Adatbázis:** MariaDB
+- **ORM (Object-relational mapping / OOP):** Prisma
