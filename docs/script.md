@@ -20,7 +20,7 @@
 
 *Vágvölgyi:* Minél több pénzt kapsz, annál gyorsabb vagy, viszont a kocsid megjavítása is pénzbe kerül. Továbbá különböző fejlesztéseket is tudsz venni az autódhoz, így strapabíróbb lesz vagy ha a kinézetére mész rá, akkor az ügyfelek minősége javul és tehetősebb embereket tudsz felvenni, akik többet perkálnak apucinak.
 
-**Dia 5** (30mp perc)
+**Dia 5** (30mp)
 
 *Ati:* Ebben a játékban morális döntéseket is kell hoznod például az esetleges bandaháborúk közepén vagy a gyanús alakok felvételével kapcsolatban. A játék vége az, hogy kitörsz a gettó negyedei közül és elkezded a normális életet. A célközönség, akik szeretik a chilles történet alapú játékokat és próbára tenni magukat morális kérdésekben. A monetizáció tekintetében pedig különböző kinézeteket lehetne venni a taxidhoz.
 
