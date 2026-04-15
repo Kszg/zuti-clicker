@@ -1,5 +1,6 @@
 # 2025-26-ikt-4
 
+A 2025-26-os tanév negyedik IKT projektje.
 
 ## Dokumentációk
 
