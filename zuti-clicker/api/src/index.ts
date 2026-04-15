@@ -26,7 +26,7 @@ const server = http.createServer(app);
 const ip: string | undefined = process.env.IP;
 const port: string | undefined = process.env.PORT;
 server.listen(port, () => {
-  console.log(`Express.js server started on ${ip}:${port}`);
+  console.log(`Express.js server started on http://${ip}:${port}`);
 });
 
 // app.use("/", router());
