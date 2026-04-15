@@ -1,6 +1,7 @@
 {
   "name": "zuti-clicker-api",
   "version": "1.0.0",
+  "private": true,
   "description": "Express.js API server project for the game Zuti Clicker.",
   "type": "module",
   "main": "src/index.ts",
