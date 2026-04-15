@@ -1,9 +1,9 @@
 {
-  "name": "zuti-clicker-api",
+  "name": "zuti-clicker-frontend",
   "version": "1.0.0",
-  "description": "Express.js API server project for the game Zuti Clicker.",
+  "description": "Vue.js frontend project for the game Zuti Clicker.",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
