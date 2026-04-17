@@ -28,3 +28,10 @@ model Authentication {
   userId       Int    @unique
   user         User   @relation(fields: [userId], references: [id])
 }
+
+model SaveData {
+  id        Int    @id @default(autoincrement())
+  userId    Int
+  data      String
+  timestamp DateTime @default(now())
+}
