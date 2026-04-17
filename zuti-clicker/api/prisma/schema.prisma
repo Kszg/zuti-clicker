@@ -18,20 +18,22 @@ model User {
   email String  @unique
   name  String?
   authentication Authentication?
-} 
+  saveData SaveData?
+}
 
 model Authentication {
   id           Int    @id @default(autoincrement())
+  userId       Int    @unique
+  user         User   @relation(fields: [userId], references: [id])
   password     String
   salt         String
   sessionToken String
-  userId       Int    @unique
-  user         User   @relation(fields: [userId], references: [id])
 }
 
 model SaveData {
   id        Int    @id @default(autoincrement())
-  userId    Int
+  userId    Int   @unique
+  user      User   @relation(fields: [userId], references: [id])
   data      String
   timestamp DateTime @default(now())
 }
