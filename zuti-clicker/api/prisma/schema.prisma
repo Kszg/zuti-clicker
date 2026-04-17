@@ -16,7 +16,8 @@ model User {
   id    Int     @id @default(autoincrement()) 
   username String @unique
   email String  @unique
-  name  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   authentication Authentication?
   saveData SaveData?
 }
@@ -35,5 +36,6 @@ model SaveData {
   userId    Int   @unique
   user      User   @relation(fields: [userId], references: [id])
   data      String
-  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
