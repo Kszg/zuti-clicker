@@ -17,4 +17,14 @@ model User {
   username String @unique
   email String  @unique
   name  String?
+  authentication Authentication?
 } 
+
+model Authentication {
+  id           Int    @id @default(autoincrement())
+  password     String
+  salt         String
+  sessionToken String
+  userId       Int    @unique
+  user         User   @relation(fields: [userId], references: [id])
+}
