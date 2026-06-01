@@ -1,5 +1,6 @@
 import express from "express";
 import http from "http";
+import router from "./router/index.js";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import compression from "compression";
@@ -29,4 +30,4 @@ server.listen(port, () => {
   console.log(`Express.js server started on http://${ip}:${port}`);
 });
 
-// app.use("/", router());
+app.use("/", router());
