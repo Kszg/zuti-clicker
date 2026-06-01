@@ -8,6 +8,55 @@ import {
 } from "../database/models/user";
 import { Responses } from "../constants/responses";
 
+/**
+ * @openapi
+ * /register:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Register a new user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterRequest'
+ *     responses:
+ *       '201':
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/MessageResponse'
+ *                 - type: object
+ *                   properties:
+ *                     userId:
+ *                       type: integer
+ *                       example: 1
+ *       '400':
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error: username, email, and password are required
+ *       '409':
+ *         description: Email or username already in use
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error: A user with that email already exists
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 export const register = async (req: express.Request, res: express.Response) => {
   try {
     const { username, email, password } = req.body as {
@@ -53,6 +102,56 @@ export const register = async (req: express.Request, res: express.Response) => {
   }
 };
 
+/**
+ * @openapi
+ * /login:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Log in with email and password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       '200':
+ *         description: Login successful. Sets the AUTH_TOKEN cookie.
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *               example: AUTH_TOKEN=abc123; HttpOnly; SameSite=Strict; Max-Age=604800
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MessageResponse'
+ *             example:
+ *               message: Login successful
+ *       '400':
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error: email and password are required
+ *       '401':
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error: Invalid credentials
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 export const login = async (req: express.Request, res: express.Response) => {
   try {
     const { email, password } = req.body as { email?: string; password?: string };
