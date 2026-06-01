@@ -1,6 +1,6 @@
 import express from "express";
 import http from "http";
-import router from "./router/index.js";
+import router from "./router/index";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import compression from "compression";

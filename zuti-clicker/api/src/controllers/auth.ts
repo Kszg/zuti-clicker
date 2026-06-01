@@ -1,11 +1,6 @@
 import express from "express";
-import { random, authentication } from "../helpers/index.js";
-import {
-  getUserByEmail,
-  getUserByUsername,
-  createUser,
-  updateSessionToken
-} from "../helpers/auth.js";
+import { random, authentication } from "../helpers/index";
+import { getUserByEmail, getUserByUsername, createUser, updateSessionToken } from "../helpers/auth";
 
 export const register = async (req: express.Request, res: express.Response) => {
   try {
