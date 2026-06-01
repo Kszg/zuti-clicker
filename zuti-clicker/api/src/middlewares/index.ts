@@ -1,6 +1,7 @@
 import express from "express";
 import { merge } from "lodash";
-import { getUserBySessionToken } from "../helpers/auth";
+import { getUserBySessionToken } from "../database/models/user";
+import { Responses } from "../constants/responses";
 
 export const isAuthenticated = async (
   req: express.Request,
@@ -11,14 +12,16 @@ export const isAuthenticated = async (
     const sessionToken: string | undefined = req.cookies["AUTH_TOKEN"];
 
     if (!sessionToken) {
-      res.status(401).json({ error: "Unauthorized" });
+      const r = Responses.AUTH.UNAUTHORIZED;
+      res.status(r.status).json(r.body);
       return;
     }
 
     const authRecord = await getUserBySessionToken(sessionToken);
 
     if (!authRecord) {
-      res.status(401).json({ error: "Unauthorized" });
+      const r = Responses.AUTH.UNAUTHORIZED;
+      res.status(r.status).json(r.body);
       return;
     }
 
@@ -26,6 +29,7 @@ export const isAuthenticated = async (
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    const r = Responses.AUTH.INTERNAL_ERROR;
+    res.status(r.status).json(r.body);
   }
 };

@@ -1,6 +1,12 @@
 import express from "express";
 import { random, authentication } from "../helpers/index";
-import { getUserByEmail, getUserByUsername, createUser, updateSessionToken } from "../helpers/auth";
+import {
+  getUserByEmail,
+  getUserByUsername,
+  createUser,
+  updateSessionToken
+} from "../database/models/user";
+import { Responses } from "../constants/responses";
 
 export const register = async (req: express.Request, res: express.Response) => {
   try {
@@ -11,7 +17,8 @@ export const register = async (req: express.Request, res: express.Response) => {
     };
 
     if (!username || !email || !password) {
-      res.status(400).json({ error: "username, email, and password are required" });
+      const r = Responses.AUTH.MISSING_REGISTER_FIELDS;
+      res.status(r.status).json(r.body);
       return;
     }
 
@@ -21,12 +28,14 @@ export const register = async (req: express.Request, res: express.Response) => {
     ]);
 
     if (existingEmail) {
-      res.status(409).json({ error: "A user with that email already exists" });
+      const r = Responses.AUTH.EMAIL_EXISTS;
+      res.status(r.status).json(r.body);
       return;
     }
 
     if (existingUsername) {
-      res.status(409).json({ error: "A user with that username already exists" });
+      const r = Responses.AUTH.USERNAME_EXISTS;
+      res.status(r.status).json(r.body);
       return;
     }
 
@@ -35,10 +44,12 @@ export const register = async (req: express.Request, res: express.Response) => {
 
     const user = await createUser({ username, email, password: hashedPassword, salt });
 
-    res.status(201).json({ message: "User registered successfully", userId: user.id });
+    const r = Responses.AUTH.REGISTER_SUCCESS;
+    res.status(r.status).json({ ...r.body, userId: user.id });
   } catch (error) {
     console.error("Register error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    const r = Responses.AUTH.INTERNAL_ERROR;
+    res.status(r.status).json(r.body);
   }
 };
 
@@ -47,20 +58,23 @@ export const login = async (req: express.Request, res: express.Response) => {
     const { email, password } = req.body as { email?: string; password?: string };
 
     if (!email || !password) {
-      res.status(400).json({ error: "email and password are required" });
+      const r = Responses.AUTH.MISSING_LOGIN_FIELDS;
+      res.status(r.status).json(r.body);
       return;
     }
 
     const user = await getUserByEmail(email);
 
     if (!user || !user.authentication) {
-      res.status(401).json({ error: "Invalid credentials" });
+      const r = Responses.AUTH.INVALID_CREDENTIALS;
+      res.status(r.status).json(r.body);
       return;
     }
 
     const expectedHash = authentication(user.authentication.salt, password);
     if (user.authentication.password !== expectedHash) {
-      res.status(401).json({ error: "Invalid credentials" });
+      const r = Responses.AUTH.INVALID_CREDENTIALS;
+      res.status(r.status).json(r.body);
       return;
     }
 
@@ -76,9 +90,11 @@ export const login = async (req: express.Request, res: express.Response) => {
       maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
     });
 
-    res.status(200).json({ message: "Login successful" });
+    const r = Responses.AUTH.LOGIN_SUCCESS;
+    res.status(r.status).json(r.body);
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    const r = Responses.AUTH.INTERNAL_ERROR;
+    res.status(r.status).json(r.body);
   }
 };
