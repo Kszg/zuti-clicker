@@ -10,7 +10,7 @@ import { Responses } from "../constants/responses";
 
 /**
  * @openapi
- * /register:
+ * /auth/register:
  *   post:
  *     tags:
  *       - Auth
@@ -104,7 +104,7 @@ export const register = async (req: express.Request, res: express.Response) => {
 
 /**
  * @openapi
- * /login:
+ * /auth/login:
  *   post:
  *     tags:
  *       - Auth
