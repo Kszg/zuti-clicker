@@ -14,9 +14,10 @@ COPY prisma/  ./prisma/
 COPY src/     ./src/
 COPY --from=deps /app/node_modules ./node_modules
 
-#the real value is injected at runtime by docker-compose.
 ARG DATABASE_URL=mysql://build:build@build:3306/build
+ARG SHADOW_DATABASE_URL=mysql://build:build@build:3306/buildShadow
 ENV DATABASE_URL=$DATABASE_URL
+ENV SHADOW_DATABASE_URL=$SHADOW_DATABASE_URL
 RUN node_modules/.bin/prisma generate
 
 ENV NODE_ENV=production
