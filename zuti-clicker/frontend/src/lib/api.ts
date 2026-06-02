@@ -8,13 +8,11 @@ export class ApiError extends Error {
   }
 }
 
-const BASE = "/api";
+// Dev: Vite proxy rewrites /api → http://localhost:2710 (vite.config.ts).
+// Production: VITE_API_BASE_URL is baked in at build time by the Dockerfile.
+const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
 
-async function request<T>(
-  method: string,
-  path: string,
-  body?: unknown
-): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
@@ -32,12 +30,24 @@ async function request<T>(
   return data;
 }
 
-export interface RegisterResponse { message: string; userId: number }
-export interface LoginResponse { message: string }
-export interface LogoutResponse { message: string }
-export interface MeResponse { user: { id: number; username: string; email: string } }
+export interface RegisterResponse {
+  message: string;
+  userId: number;
+}
+export interface LoginResponse {
+  message: string;
+}
+export interface LogoutResponse {
+  message: string;
+}
+export interface MeResponse {
+  user: { id: number; username: string; email: string };
+}
 
-export interface UnitEntry { unitId: string; owned: number }
+export interface UnitEntry {
+  unitId: string;
+  owned: number;
+}
 
 export interface SavePayload {
   tokens: number;
@@ -47,10 +57,19 @@ export interface SavePayload {
   units: UnitEntry[];
 }
 
-export interface SaveData extends SavePayload { savedAt: string }
-export interface LoadSaveResponse { save: SaveData | null }
-export interface StoreSaveResponse { message: string; savedAt: string }
-export interface ResetSaveResponse { message: string }
+export interface SaveData extends SavePayload {
+  savedAt: string;
+}
+export interface LoadSaveResponse {
+  save: SaveData | null;
+}
+export interface StoreSaveResponse {
+  message: string;
+  savedAt: string;
+}
+export interface ResetSaveResponse {
+  message: string;
+}
 
 export const api = {
   auth: {
