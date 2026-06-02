@@ -58,13 +58,20 @@ export const me = async (req: express.Request, res: express.Response) => {
  *       '401':
  *         $ref: '#/components/responses/Unauthorized'
  */
-export const logout = async (_req: express.Request, res: express.Response) => {
-  res.clearCookie("AUTH_TOKEN", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict"
-  });
-  res.status(200).json({ message: "Logged out successfully." });
+export const logout = async (req: express.Request, res: express.Response) => {
+  try {
+    await updateSessionToken(req.identity!.id, "");
+    res.clearCookie("AUTH_TOKEN", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
+    });
+    res.status(200).json({ message: "Logged out successfully." });
+  } catch (error) {
+    console.error("Logout error:", error);
+    const r = Responses.AUTH.INTERNAL_ERROR;
+    res.status(r.status).json(r.body);
+  }
 };
 
 /**
