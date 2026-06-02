@@ -1,5 +1,4 @@
 import express from "express";
-import { merge } from "lodash";
 import { getUserBySessionToken } from "../database/models/user";
 import { Responses } from "../constants/responses";
 
@@ -25,7 +24,7 @@ export const isAuthenticated = async (
       return;
     }
 
-    merge(req, { identity: authRecord.user });
+    req.identity = authRecord.user;
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
