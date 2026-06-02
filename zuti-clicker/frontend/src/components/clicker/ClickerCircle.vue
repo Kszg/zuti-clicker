@@ -21,7 +21,7 @@ function handleClick(e: MouseEvent) {
 
     <div class="circle" :class="{ active }">
       <div class="circle-inner">
-        <img src="../../assets/images/zutiy.jpg" alt="Dr. Zuti Pál, Digitális kor győztese" />
+        <img src="@/assets/images/zutiy.jpg" alt="Dr. Zuti Pál, Digitális kor győztese" />
       </div>
     </div>
   </div>

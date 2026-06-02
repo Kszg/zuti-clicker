@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
 import { getMaxBuyable } from "@/utils/costCalculator";
-import { formatNumber } from "@/utils/formatters";
+import { formatNumber, formatRate } from "@/utils/formatters";
 import type { Multiplier } from "@/types";
 
 const props = defineProps<{ unitId: string; multiplier: Multiplier }>();
@@ -66,7 +66,7 @@ const btnLabel = computed(() => {
         <div class="unit-sub">
           <span class="owned-count">{{ owned }}</span>
           <span class="owned-label"> {{ t("units.owned") }}</span>
-          <span class="prod-badge">{{ formatNumber(def?.baseProduction ?? 0) }}/s</span>
+          <span class="prod-badge">{{ formatRate(def?.baseProduction ?? 0) }}/s</span>
         </div>
       </div>
 
@@ -88,11 +88,11 @@ const btnLabel = computed(() => {
           </div>
           <div v-if="effectiveAmount > 0" class="tip-row">
             <span>{{ t("units.tooltipGain") }}</span>
-            <span class="tip-val accent">+{{ formatNumber(gainPerS) }}/s</span>
+            <span class="tip-val accent">+{{ formatRate(gainPerS) }}/s</span>
           </div>
           <div class="tip-row">
             <span>{{ t("units.tooltipEach") }}</span>
-            <span class="tip-val">{{ formatNumber(def?.baseProduction ?? 0) }}/s</span>
+            <span class="tip-val">{{ formatRate(def?.baseProduction ?? 0) }}/s</span>
           </div>
         </div>
       </Transition>

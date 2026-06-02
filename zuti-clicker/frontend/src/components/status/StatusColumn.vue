@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
-import { formatNumber, formatTime } from "@/utils/formatters";
+import { formatNumber, formatRate, formatTime } from "@/utils/formatters";
 import StatItem from "./StatItem.vue";
 
 const { t } = useI18n();
@@ -11,7 +11,7 @@ const game = useGameStore();
 const stats = computed(() => [
   {
     label: t("status.perSecond"),
-    value: `${formatNumber(game.tokensPerSecond)}/s`,
+    value: `${formatRate(game.tokensPerSecond)}/s`,
     primary: false
   },
   { label: t("status.perClick"), value: `+${formatNumber(game.tokensPerClick)}`, primary: false },

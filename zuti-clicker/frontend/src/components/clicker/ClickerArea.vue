@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
-import { formatNumber } from "@/utils/formatters";
+import { formatRate } from "@/utils/formatters";
 import ClickerCircle from "./ClickerCircle.vue";
 import FloatingNumber from "./FloatingNumber.vue";
 
@@ -46,7 +46,7 @@ function onCircleClick(e: MouseEvent) {
 
       <Transition name="tps-fade">
         <div v-if="game.tokensPerSecond > 0" class="tps-pill">
-          <span class="tps-val">{{ formatNumber(game.tokensPerSecond) }}</span>
+          <span class="tps-val">{{ formatRate(game.tokensPerSecond) }}</span>
           <span class="tps-unit">/s</span>
         </div>
       </Transition>
