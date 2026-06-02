@@ -63,6 +63,107 @@ export const buildSwaggerSpec = (): object => {
             properties: {
               message: { type: "string" }
             }
+          },
+          UnitSave: {
+            type: "object",
+            required: ["unitId", "owned"],
+            properties: {
+              unitId: { type: "string", example: "alpha" },
+              owned: { type: "integer", minimum: 0, example: 5 }
+            }
+          },
+          StoreSaveRequest: {
+            type: "object",
+            required: [
+              "tokens",
+              "totalTokensEarned",
+              "totalClicks",
+              "elapsedSeconds",
+              "units"
+            ],
+            properties: {
+              tokens: {
+                type: "number",
+                description: "Current token balance",
+                example: 1234.56
+              },
+              totalTokensEarned: {
+                type: "number",
+                description: "All-time tokens earned",
+                example: 9999.99
+              },
+              totalClicks: {
+                type: "integer",
+                description: "Total manual clicks",
+                example: 420
+              },
+              elapsedSeconds: {
+                type: "number",
+                description: "Total time played in seconds",
+                example: 3600.5
+              },
+              units: {
+                type: "array",
+                items: { $ref: "#/components/schemas/UnitSave" }
+              }
+            }
+          },
+          SaveData: {
+            type: "object",
+            properties: {
+              tokens: { type: "number", example: 1234.56 },
+              totalTokensEarned: { type: "number", example: 9999.99 },
+              totalClicks: { type: "integer", example: 420 },
+              elapsedSeconds: { type: "number", example: 3600.5 },
+              savedAt: { type: "string", format: "date-time" },
+              units: {
+                type: "array",
+                items: { $ref: "#/components/schemas/UnitSave" }
+              }
+            }
+          },
+          LoadSaveResponse: {
+            type: "object",
+            properties: {
+              save: {
+                oneOf: [
+                  { $ref: "#/components/schemas/SaveData" },
+                  { type: "null" }
+                ],
+                description: "null when the user has no save yet"
+              }
+            }
+          },
+          StoreSaveResponse: {
+            allOf: [
+              { $ref: "#/components/schemas/MessageResponse" },
+              {
+                type: "object",
+                properties: {
+                  savedAt: { type: "string", format: "date-time" }
+                }
+              }
+            ]
+          }
+        },
+        responses: {
+          Unauthorized: {
+            description: "Missing or invalid session token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Unauthorized." }
+              }
+            }
+          },
+          InternalError: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Internal server error." }
+              }
+            }
           }
         }
       }

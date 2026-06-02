@@ -2,6 +2,7 @@
 import { useI18n } from "vue-i18n";
 import { storeToRefs } from "pinia";
 import { useSettingsStore } from "@/stores/settingsStore";
+import SaveBar from "@/components/layout/SaveBar.vue";
 import type { Language } from "@/types";
 
 const { t, locale } = useI18n();
@@ -20,6 +21,8 @@ function toggleLanguage() {
     <div class="brand">
       <span class="brand-name">{{ t("app.title") }}</span>
     </div>
+
+    <SaveBar />
 
     <div class="controls">
       <button class="ctrl-btn" @click="toggleLanguage" :title="t('settings.language')">

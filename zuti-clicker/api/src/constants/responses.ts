@@ -13,4 +13,21 @@ export class Responses {
     REGISTER_SUCCESS: { status: 201, body: { message: "User registered successfully." } },
     LOGIN_SUCCESS: { status: 200, body: { message: "Login successful." } }
   } as const;
+
+  static readonly SAVE = {
+    MISSING_FIELDS: {
+      status: 400,
+      body: {
+        error: "tokens, totalTokensEarned, totalClicks, elapsedSeconds, and units are required."
+      }
+    },
+    INVALID_UNITS: {
+      status: 400,
+      body: { error: "Each unit must have a valid unitId (string) and owned count (number >= 0)." }
+    },
+    NOT_FOUND: { status: 404, body: { save: null } },
+    SAVE_SUCCESS: { status: 200, body: { message: "Save updated successfully." } },
+    RESET_SUCCESS: { status: 200, body: { message: "Save reset successfully." } },
+    INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
+  } as const;
 }

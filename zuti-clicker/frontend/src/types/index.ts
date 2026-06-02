@@ -13,3 +13,9 @@ export interface UnitState {
 export type Multiplier = 1 | 5 | 10 | 50 | "max";
 export type Theme = "dark" | "light";
 export type Language = "en" | "hu";
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+}

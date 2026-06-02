@@ -10,6 +10,65 @@ import { Responses } from "../constants/responses";
 
 /**
  * @openapi
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get the currently authenticated user
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       '200':
+ *         description: Authenticated user info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer, example: 1 }
+ *                     username: { type: string, example: johndoe }
+ *                     email: { type: string, example: john@example.com }
+ *       '401':
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+export const me = async (req: express.Request, res: express.Response) => {
+  const identity = req.identity!;
+  res.status(200).json({
+    user: { id: identity.id, username: identity.username, email: identity.email }
+  });
+};
+
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Log out the current user (clears the session cookie)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       '200':
+ *         description: Logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MessageResponse'
+ *       '401':
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+export const logout = async (_req: express.Request, res: express.Response) => {
+  res.clearCookie("AUTH_TOKEN", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict"
+  });
+  res.status(200).json({ message: "Logged out successfully." });
+};
+
+/**
+ * @openapi
  * /auth/register:
  *   post:
  *     tags:
