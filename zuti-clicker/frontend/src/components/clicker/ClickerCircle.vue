@@ -21,7 +21,7 @@ function handleClick(e: MouseEvent) {
 
     <div class="circle" :class="{ active }">
       <div class="circle-inner">
-        <span class="placeholder-icon">⚡</span>
+        <img src="../../assets/images/zutiy.jpg" alt="Dr. Zuti Pál, Digitális kor győztese" />
       </div>
     </div>
   </div>
@@ -76,12 +76,6 @@ function handleClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.placeholder-icon {
-  font-size: 88px;
-  line-height: 1;
-  pointer-events: none;
 }
 
 /* rings */

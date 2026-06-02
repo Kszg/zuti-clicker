@@ -18,7 +18,6 @@ function toggleLanguage() {
 <template>
   <header class="app-header">
     <div class="brand">
-      <span class="brand-icon">⚡</span>
       <span class="brand-name">{{ t("app.title") }}</span>
     </div>
 
@@ -59,10 +58,6 @@ function toggleLanguage() {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.brand-icon {
-  font-size: 18px;
 }
 
 .brand-name {
