@@ -83,6 +83,34 @@ export const useGameStore = defineStore("game", () => {
     elapsedSeconds.value += delta;
   }
 
+  function loadFromSave(save: {
+    tokens: number;
+    totalTokensEarned: number;
+    totalClicks: number;
+    elapsedSeconds: number;
+    units: { unitId: string; owned: number }[];
+  }): void {
+    tokens.value = save.tokens;
+    totalTokensEarned.value = save.totalTokensEarned;
+    totalClicks.value = save.totalClicks;
+    elapsedSeconds.value = save.elapsedSeconds;
+    unitStates.value.forEach((u) => { u.owned = 0; });
+    for (const { unitId, owned } of save.units) {
+      const state = unitStates.value.find((u) => u.id === unitId);
+      if (state) state.owned = owned;
+    }
+  }
+
+  function toSavePayload() {
+    return {
+      tokens: tokens.value,
+      totalTokensEarned: totalTokensEarned.value,
+      totalClicks: totalClicks.value,
+      elapsedSeconds: elapsedSeconds.value,
+      units: unitStates.value.map((u) => ({ unitId: u.id, owned: u.owned }))
+    };
+  }
+
   return {
     tokens,
     totalTokensEarned,
@@ -96,6 +124,8 @@ export const useGameStore = defineStore("game", () => {
     getProductionGain,
     canAfford,
     buyUnit,
-    tick
+    tick,
+    loadFromSave,
+    toSavePayload
   };
 });
