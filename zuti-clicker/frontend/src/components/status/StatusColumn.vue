@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { formatNumber, formatRate, formatTime } from "@/utils/formatters";
 import StatItem from "./StatItem.vue";
+import PrestigePanel from "@/components/prestige/PrestigePanel.vue";
 
 const { t } = useI18n();
 const game = useGameStore();
@@ -14,10 +15,17 @@ const stats = computed(() => [
     value: `${formatRate(game.tokensPerSecond)}/s`,
     primary: false
   },
-  { label: t("status.perClick"), value: `+${formatNumber(game.tokensPerClick)}`, primary: false },
+  { label: t("status.perClick"), value: `+${formatRate(game.tokensPerClick)}`, primary: false },
   { label: t("status.totalEarned"), value: formatNumber(game.totalTokensEarned), primary: false },
   { label: t("status.totalClicks"), value: formatNumber(game.totalClicks), primary: false },
-  { label: t("status.timePlayed"), value: formatTime(game.elapsedSeconds), primary: false }
+  { label: t("status.timePlayed"), value: formatTime(game.elapsedSeconds), primary: false },
+  { label: t("status.phdCount"), value: formatNumber(game.phdCount), primary: game.phdCount > 0 }
+]);
+
+const runStats = computed(() => [
+  { label: t("status.runEarned"), value: formatNumber(game.runTokensEarned) },
+  { label: t("status.runClicks"), value: formatNumber(game.runClicks) },
+  { label: t("status.runTime"), value: formatTime(game.runSeconds) }
 ]);
 </script>
 
@@ -41,6 +49,15 @@ const stats = computed(() => [
         :primary="s.primary"
       />
     </div>
+
+    <div class="run-section">
+      <span class="run-title">{{ t("status.thisRun") }}</span>
+      <div class="stats-list">
+        <StatItem v-for="s in runStats" :key="s.label" :label="s.label" :value="s.value" />
+      </div>
+    </div>
+
+    <PrestigePanel />
   </aside>
 </template>
 
@@ -98,9 +115,24 @@ const stats = computed(() => [
 
 .stats-list {
   padding: 8px;
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+
+.run-section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.run-title {
+  display: block;
+  padding: 10px 14px 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
 }
 </style>

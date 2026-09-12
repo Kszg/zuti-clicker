@@ -13,6 +13,9 @@ import UnitsPanel from "@/components/units/UnitsPanel.vue";
 import AuthModal from "@/components/modals/AuthModal.vue";
 import GuestWarningModal from "@/components/modals/GuestWarningModal.vue";
 import ConfirmModal from "@/components/modals/ConfirmModal.vue";
+import SettingsModal from "@/components/modals/SettingsModal.vue";
+import PrestigeConfirmModal from "@/components/prestige/PrestigeConfirmModal.vue";
+import PrestigeCeremony from "@/components/prestige/PrestigeCeremony.vue";
 import { useGameLoop } from "@/composables/useGameLoop";
 
 const { t } = useI18n();
@@ -77,6 +80,7 @@ async function onConfirmDelete() {
 
   <AuthModal />
   <GuestWarningModal />
+  <SettingsModal />
   <ConfirmModal
     v-if="ui.confirmDeleteOpen"
     :title="t('confirm.deleteSaveTitle')"
@@ -86,6 +90,8 @@ async function onConfirmDelete() {
     @confirm="onConfirmDelete"
     @cancel="ui.confirmDeleteOpen = false"
   />
+  <PrestigeConfirmModal v-if="ui.prestigeConfirmOpen" />
+  <PrestigeCeremony v-if="ui.prestigeCeremonyOpen" />
 </template>
 
 <style scoped>
