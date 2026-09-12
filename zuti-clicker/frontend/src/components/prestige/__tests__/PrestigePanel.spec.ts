@@ -67,4 +67,19 @@ describe("PrestigePanel", () => {
     expect(wrapper.find(".prestige-panel").exists()).toBe(true);
     expect(wrapper.find(".phd-count").text()).toBe("2");
   });
+
+  it("half-percent regression: 1 PhD shows -0.5% unit cost, not -1% (reported live)", () => {
+    // Math.round(0.5) rounds UP in JS, so with the naive Math.round-based
+    // display, 1 PhD's true 0.5% cost discount showed as "-1%" — exactly
+    // double the real rate. Only visible at odd PhD counts (2 PhD's 1.0%
+    // discount happens to round to the same "-1%" either way, which is
+    // exactly why this went unnoticed until someone had exactly 1 PhD).
+    const game = useGameStore();
+    game.totalTokensEarned = 1_000_000;
+    game.phdCount = 1;
+    const wrapper = mount(PrestigePanel);
+    const chips = wrapper.findAll(".mult-chip").map((c) => c.text());
+    expect(chips.some((c) => c.startsWith("-0.5%"))).toBe(true);
+    expect(chips.some((c) => c.startsWith("-1%"))).toBe(false);
+  });
 });

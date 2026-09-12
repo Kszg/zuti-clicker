@@ -5,6 +5,7 @@ import PrestigeConfirmModal from "@/components/prestige/PrestigeConfirmModal.vue
 import { useGameStore } from "@/stores/gameStore";
 import { useAuthStore } from "@/stores/authStore";
 import { getProductionMultiplier, getCostMultiplier } from "@/utils/prestige";
+import { formatPercent } from "@/utils/formatters";
 
 // PrestigeConfirmModal renders via <Teleport to="body">, so its content lives
 // under document.body rather than under the mounted wrapper's own element —
@@ -33,16 +34,36 @@ describe("PrestigeConfirmModal", () => {
     // getProductionMultiplier/getCostMultiplier, so a balance constant change
     // would update gameStore and PrestigePanel but silently leave this
     // modal's preview showing stale numbers.
+    //
+    // Uses an ODD total PhD count (9, not 10) deliberately: an even count's
+    // 0.5%-per-PhD discount always lands on a whole percent, which would
+    // pass even with the whole-percent-rounding bug this same review round
+    // found in production — see the "half-percent" test below.
     const game = useGameStore();
     game.phdCount = 7;
-    game.runTokensEarned = 9_000_000; // -> 3 more PhD, total 10
+    game.runTokensEarned = 4_000_000; // -> 2 more PhD, total 9
     mount(PrestigeConfirmModal);
 
-    const expectedAfterProduction = `x${getProductionMultiplier(10).toFixed(2)}`;
-    const expectedAfterCost = `-${Math.round((1 - getCostMultiplier(10)) * 100)}%`;
+    const expectedAfterProduction = `x${getProductionMultiplier(9).toFixed(2)}`;
+    const expectedAfterCost = `-${formatPercent((1 - getCostMultiplier(9)) * 100)}%`;
 
     expect(body().text()).toContain(expectedAfterProduction);
     expect(body().text()).toContain(expectedAfterCost);
+  });
+
+  it("half-percent regression: 1 PhD's 'before' discount shows its true 0.5%, not rounded up to 1%", () => {
+    // Math.round(0.5) rounds UP in JS, so 1 PhD's true 0.5% discount used to
+    // display as "-1%" — exactly double the real rate, and only ever
+    // noticeable at odd PhD counts (an even count's discount always lands on
+    // a whole percent, masking the bug). Verified against a live report of
+    // this exact symptom: "1 PhD owned" showing "-1% Unit cost".
+    const game = useGameStore();
+    game.phdCount = 1;
+    game.runTokensEarned = 1_000_000; // gives the modal something to prestige into
+    mount(PrestigeConfirmModal);
+
+    const costRow = body().findAll(".mult-value")[1]!.text(); // "before → after"
+    expect(costRow.startsWith("-0.5%")).toBe(true);
   });
 
   it("shows the guest warning only when not logged in", () => {

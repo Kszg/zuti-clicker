@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatNumber, formatRate, formatTime } from "@/utils/formatters";
+import { formatNumber, formatRate, formatTime, formatPercent } from "@/utils/formatters";
 
 describe("formatNumber - regression", () => {
   it("matches the existing implementation's known values", () => {
@@ -59,6 +59,28 @@ describe("formatRate - large-number fix", () => {
 
   it("renders Infinity distinctly", () => {
     expect(formatRate(Infinity)).toBe("∞");
+  });
+});
+
+describe("formatPercent", () => {
+  it("shows whole numbers without a decimal", () => {
+    expect(formatPercent(0)).toBe("0");
+    expect(formatPercent(1)).toBe("1");
+    expect(formatPercent(4)).toBe("4");
+    expect(formatPercent(50)).toBe("50");
+  });
+
+  it("keeps one decimal for a half-percent value instead of rounding it away", () => {
+    // The bug this guards: Math.round(0.5) rounds UP in JS, so a 1-PhD 0.5%
+    // discount used to display as "-1%" — double the real rate.
+    expect(formatPercent(0.5)).toBe("0.5");
+    expect(formatPercent(1.5)).toBe("1.5");
+    expect(formatPercent(4.5)).toBe("4.5");
+  });
+
+  it("renders non-finite input as 0", () => {
+    expect(formatPercent(Infinity)).toBe("0");
+    expect(formatPercent(NaN)).toBe("0");
   });
 });
 

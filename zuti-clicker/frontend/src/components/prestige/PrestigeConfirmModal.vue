@@ -5,6 +5,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { useAuthStore } from "@/stores/authStore";
 import { usePrestige } from "@/composables/usePrestige";
 import { getProductionMultiplier, getCostMultiplier } from "@/utils/prestige";
+import { formatPercent } from "@/utils/formatters";
 
 const { t } = useI18n();
 const game = useGameStore();
@@ -19,9 +20,11 @@ const productionBefore = computed(() => `x${game.productionMultiplier.toFixed(2)
 const productionAfter = computed(
   () => `x${getProductionMultiplier(newPhdCount.value).toFixed(2)}`
 );
-const costBefore = computed(() => `-${Math.round((1 - game.costMultiplier) * 100)}%`);
+// formatPercent (not Math.round): the cost discount steps by 0.5% per PhD, so
+// rounding to a whole percent would make 1 PhD's true 0.5% look like 1%.
+const costBefore = computed(() => `-${formatPercent((1 - game.costMultiplier) * 100)}%`);
 const costAfter = computed(
-  () => `-${Math.round((1 - getCostMultiplier(newPhdCount.value)) * 100)}%`
+  () => `-${formatPercent((1 - getCostMultiplier(newPhdCount.value)) * 100)}%`
 );
 </script>
 

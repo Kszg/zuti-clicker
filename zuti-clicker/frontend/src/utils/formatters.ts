@@ -32,6 +32,15 @@ export function formatRate(n: number): string {
   return formatScaled(n, 2);
 }
 
+// Whole-percent rounding (Math.round) misrepresents a half-percent-per-step
+// rate: e.g. a single PhD's true 0.5% cost discount rounds up to "1%", making
+// it look exactly double the real rate. Keeps one decimal only when it's not
+// a whole number, so "1 PhD" reads "0.5%" and "2 PhD" still reads "1%".
+export function formatPercent(value: number): string {
+  if (!isFinite(value)) return "0";
+  return value.toFixed(1).replace(/\.0$/, "");
+}
+
 export function formatTime(seconds: number): string {
   const s = Math.floor(seconds);
   if (s < 60) return `${s}s`;

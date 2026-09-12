@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { usePrestige } from "@/composables/usePrestige";
-import { formatNumber } from "@/utils/formatters";
+import { formatNumber, formatPercent } from "@/utils/formatters";
 import { PHD_TOKEN_SCALE, UNIT_REVEAL_FRACTION } from "@/utils/gameConstants";
 
 const { t } = useI18n();
@@ -16,9 +16,14 @@ const revealed = computed(
   () => game.totalTokensEarned >= PHD_TOKEN_SCALE * UNIT_REVEAL_FRACTION
 );
 
+// This is a progress-bar fraction, not a per-PhD rate — whole-percent
+// rounding has no misleading-rate implication here, unlike the multipliers
+// below.
 const progressPercent = computed(() => Math.round(game.prestigeProgress * 100));
-const productionPercent = computed(() => Math.round((game.productionMultiplier - 1) * 100));
-const costDiscountPercent = computed(() => Math.round((1 - game.costMultiplier) * 100));
+// formatPercent (not Math.round): the cost discount steps by 0.5% per PhD, so
+// rounding to a whole percent would make 1 PhD's true 0.5% look like 1%.
+const productionPercent = computed(() => formatPercent((game.productionMultiplier - 1) * 100));
+const costDiscountPercent = computed(() => formatPercent((1 - game.costMultiplier) * 100));
 </script>
 
 <template>
