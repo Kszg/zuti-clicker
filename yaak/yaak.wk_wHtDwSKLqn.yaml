@@ -12,4 +12,7 @@ encryptionKeyChallenge: null
 settingValidateCertificates: true
 settingFollowRedirects: true
 settingRequestTimeout: 0
+settingRequestMessageSize: 67108864
 settingDnsOverrides: []
+settingSendCookies: true
+settingStoreCookies: true
