@@ -40,8 +40,15 @@ jobs:
         working-directory: zuti-clicker/api
         run: pnpm install --frozen-lockfile
 
+      # prisma.config.ts resolves DATABASE_URL/SHADOW_DATABASE_URL via
+      # dotenv even for `generate` (which never connects, just needs the
+      # vars present) - same dummy values the api Dockerfile's build ARGs
+      # use for the same reason, since there's no real .env in this job.
       - name: Generate Prisma client
         working-directory: zuti-clicker/api
+        env:
+          DATABASE_URL: mysql://build:build@build:3306/build
+          SHADOW_DATABASE_URL: mysql://build:build@build:3306/buildShadow
         run: pnpm exec prisma generate
 
       # `pnpm build` is not used here: api/tsconfig.json has no outDir/include,
