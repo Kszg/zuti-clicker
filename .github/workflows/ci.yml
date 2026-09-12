@@ -1,0 +1,269 @@
+name: PR Tests
+
+# Runs on every PR into main. Three independent test stages (no interdependency
+# between them - on this single self-hosted runner they still queue one after
+# another, but this keeps each stage's pass/fail visible on its own and keeps
+# the door open for more runners later) feed a shared JUnit -> HTML/ODS report
+# pipeline, aggregated and published by two further jobs.
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 1: typecheck (api `tsc --noEmit` + frontend `vue-tsc --build`)
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Typecheck
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install api dependencies
+        working-directory: zuti-clicker/api
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: zuti-clicker/api
+        run: pnpm exec prisma generate
+
+      # `pnpm build` is not used here: api/tsconfig.json has no outDir/include,
+      # so plain `tsc` would emit .js next to sources. `tsc --noEmit` is the
+      # reliable typecheck-only gate (see CLAUDE.md / the CI/CD plan).
+      - name: Typecheck api
+        id: api_typecheck
+        working-directory: zuti-clicker/api
+        run: |
+          SECONDS=0
+          set +e
+          pnpm exec tsc --noEmit > /tmp/zuti-api-typecheck.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          echo "duration=$SECONDS" >> "$GITHUB_OUTPUT"
+          set -e
+          cat /tmp/zuti-api-typecheck.log
+
+      - name: Install frontend dependencies
+        working-directory: zuti-clicker/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck frontend
+        id: frontend_typecheck
+        working-directory: zuti-clicker/frontend
+        run: |
+          SECONDS=0
+          set +e
+          pnpm run type-check > /tmp/zuti-frontend-typecheck.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          echo "duration=$SECONDS" >> "$GITHUB_OUTPUT"
+          set -e
+          cat /tmp/zuti-frontend-typecheck.log
+
+      # Neither tsc nor vue-tsc emits JUnit XML, so this stage's report is a
+      # small hand-written one (two synthetic cases) - it still flows through
+      # the same junit-report.mjs pipeline as the real Jest/Vitest suites.
+      - name: Write JUnit report
+        if: always()
+        run: |
+          mkdir -p reports
+          api_status="${{ steps.api_typecheck.outputs.exit_code }}"
+          fe_status="${{ steps.frontend_typecheck.outputs.exit_code }}"
+          api_dur="${{ steps.api_typecheck.outputs.duration }}"
+          fe_dur="${{ steps.frontend_typecheck.outputs.duration }}"
+          api_failure=""
+          fe_failure=""
+          failures=0
+          if [ "$api_status" != "0" ]; then
+            failures=$((failures + 1))
+            api_failure="<failure message=\"tsc --noEmit exited with code ${api_status}\">See the Typecheck api step log</failure>"
+          fi
+          if [ "$fe_status" != "0" ]; then
+            failures=$((failures + 1))
+            fe_failure="<failure message=\"vue-tsc --build exited with code ${fe_status}\">See the Typecheck frontend step log</failure>"
+          fi
+          total_time=$((api_dur + fe_dur))
+          cat > reports/junit.xml <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="typecheck" tests="2" failures="${failures}" time="${total_time}">
+            <testsuite name="typecheck" tests="2" failures="${failures}" time="${total_time}">
+              <testcase classname="typecheck" name="api: tsc --noEmit" time="${api_dur}">${api_failure}</testcase>
+              <testcase classname="typecheck" name="frontend: vue-tsc --build" time="${fe_dur}">${fe_failure}</testcase>
+            </testsuite>
+          </testsuites>
+          XML
+          cat reports/junit.xml
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-typecheck
+          path: reports/junit.xml
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Fail job if typecheck failed
+        if: always()
+        run: |
+          if [ "${{ steps.api_typecheck.outputs.exit_code }}" != "0" ] || [ "${{ steps.frontend_typecheck.outputs.exit_code }}" != "0" ]; then
+            echo "::error::Typecheck failed - see the step logs above"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Stage 2: frontend tests (Vitest, no server/DB involved)
+  # ---------------------------------------------------------------------------
+  frontend-tests:
+    name: Frontend tests
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: zuti-clicker/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        working-directory: zuti-clicker/frontend
+        run: >
+          pnpm exec vitest run --reporter=default --reporter=junit
+          --outputFile.junit=reports/junit.xml
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-frontend-tests
+          path: zuti-clicker/frontend/reports/junit.xml
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Stage 3: api tests (Jest/supertest integration tests against a real,
+  # dedicated zutiClickerTest database - see CLAUDE.md "Database & migrations"
+  # and the CI/CD plan's "What I need from you" section for how the runner's
+  # CI env file is provisioned).
+  # ---------------------------------------------------------------------------
+  api-tests:
+    name: API tests
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: zuti-clicker/api
+        run: pnpm install --frozen-lockfile
+
+      # Runner-local file (never a GitHub secret, per the CI/CD plan) holding
+      # DATABASE_* creds for the dedicated zutiClickerTest DB + a throwaway
+      # CRYPTO_SECRET_KEY. Never touches production data.
+      - name: Load CI environment file
+        working-directory: zuti-clicker/api
+        run: |
+          ENV_CI_FILE="/mnt/raid1/zuti-clicker-ci/.env.ci"
+          if [ ! -f "$ENV_CI_FILE" ]; then
+            echo "::error::Missing $ENV_CI_FILE on this runner - see 'What I need from you' in the CI/CD plan for its required contents."
+            exit 1
+          fi
+          cp "$ENV_CI_FILE" .env
+
+      - name: Generate Prisma client
+        working-directory: zuti-clicker/api
+        run: pnpm exec prisma generate
+
+      # Also proves the migrations apply cleanly from scratch.
+      - name: Apply migrations to the test database
+        working-directory: zuti-clicker/api
+        run: pnpm exec prisma migrate deploy
+
+      # Tests hit a hardcoded http://localhost:2710 (src/constants/test-data.ts)
+      # so the server has to be listening on exactly that port before `pnpm test`.
+      - name: Start API server
+        working-directory: zuti-clicker/api
+        run: |
+          if ss -ltn "( sport = :2710 )" 2>/dev/null | grep -q ':2710'; then
+            echo "::error::Port 2710 is already in use on this runner - a previous run may not have shut down cleanly."
+            exit 1
+          fi
+          nohup pnpm exec tsx src/index.ts > /tmp/zuti-api-ci.log 2>&1 &
+          echo $! > /tmp/zuti-api-ci.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:2710/docs > /dev/null 2>&1; then
+              echo "API server is up (pid $(cat /tmp/zuti-api-ci.pid))"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::API server did not become healthy within 30s"
+          cat /tmp/zuti-api-ci.log
+          exit 1
+
+      - name: Run API tests
+        working-directory: zuti-clicker/api
+        env:
+          JEST_JUNIT_OUTPUT_DIR: reports
+          JEST_JUNIT_OUTPUT_NAME: junit.xml
+        run: >
+          node --experimental-vm-modules node_modules/jest/bin/jest.js
+          --config=jest.config.cjs --reporters=default --reporters=jest-junit
+
+      - name: Dump API server log on failure
+        if: failure()
+        run: cat /tmp/zuti-api-ci.log || true
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/zuti-api-ci.pid ]; then
+            kill "$(cat /tmp/zuti-api-ci.pid)" 2>/dev/null || true
+            rm -f /tmp/zuti-api-ci.pid
+          fi
+
+      # The suite creates real test_<random>@example.com rows in
+      # zutiClickerTest; reap them the same way CLAUDE.md prescribes for the
+      # live DB (api/scripts/cleanup-test-users.ts), even though this is a
+      # dedicated test database, so it doesn't grow unbounded across PRs.
+      - name: Cleanup test users
+        if: always()
+        working-directory: zuti-clicker/api
+        run: pnpm cleanup:test-users --apply
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-api-tests
+          path: zuti-clicker/api/reports/junit.xml
+          retention-days: 14
+          if-no-files-found: warn
+
