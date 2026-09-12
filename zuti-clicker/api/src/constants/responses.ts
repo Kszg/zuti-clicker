@@ -25,9 +25,36 @@ export class Responses {
       status: 400,
       body: { error: "Each unit must have a valid unitId (string) and owned count (number >= 0)." }
     },
+    INVALID_PRESTIGE: {
+      status: 400,
+      body: {
+        error:
+          "phdCount, prestigeCount, runTokensEarned, runClicks, and runSeconds must be non-negative numbers when provided."
+      }
+    },
     NOT_FOUND: { status: 404, body: { save: null } },
     SAVE_SUCCESS: { status: 200, body: { message: "Save updated successfully." } },
     RESET_SUCCESS: { status: 200, body: { message: "Save reset successfully." } },
+    INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
+  } as const;
+
+  static readonly SETTINGS = {
+    // Keep the allowed-value lists here in sync with constants/settings.ts.
+    INVALID_THEME: { status: 400, body: { error: "theme must be one of: dark, light." } },
+    INVALID_LANGUAGE: { status: 400, body: { error: "language must be one of: en, hu." } },
+    INVALID_CEREMONY: {
+      status: 400,
+      body: { error: "prestigeCeremony must be one of: full, brief." }
+    },
+    INVALID_AUTOSAVE_ENABLED: {
+      status: 400,
+      body: { error: "autosaveEnabled must be a boolean." }
+    },
+    INVALID_AUTOSAVE_INTERVAL: {
+      status: 400,
+      body: { error: "autosaveIntervalSecs must be one of: 15, 30, 60, 300." }
+    },
+    UPDATE_SUCCESS: { status: 200, body: { message: "Settings updated successfully." } },
     INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
   } as const;
 }

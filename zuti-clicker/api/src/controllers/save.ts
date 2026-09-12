@@ -7,6 +7,11 @@ interface SaveBody {
   totalTokensEarned?: unknown;
   totalClicks?: unknown;
   elapsedSeconds?: unknown;
+  phdCount?: unknown;
+  prestigeCount?: unknown;
+  runTokensEarned?: unknown;
+  runClicks?: unknown;
+  runSeconds?: unknown;
   units?: unknown;
 }
 
@@ -21,6 +26,20 @@ function isValidUnits(units: unknown): units is UnitInput[] {
       (entry["owned"] as number) >= 0
     );
   });
+}
+
+// Prestige fields are optional (older clients omit them entirely), but a
+// *present* value must be a sane non-negative number. Number.isInteger matters
+// for the Int columns: a fractional value would make Prisma throw, which the
+// catch block below would turn into a misleading 500 instead of a 400.
+function isOptionalCount(value: unknown): value is number | undefined {
+  if (value === undefined) return true;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isOptionalAmount(value: unknown): value is number | undefined {
+  if (value === undefined) return true;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
 /**
@@ -66,6 +85,11 @@ export const loadSave = async (req: express.Request, res: express.Response) => {
         totalTokensEarned: save.totalTokensEarned,
         totalClicks: save.totalClicks,
         elapsedSeconds: save.elapsedSeconds,
+        phdCount: save.phdCount,
+        prestigeCount: save.prestigeCount,
+        runTokensEarned: save.runTokensEarned,
+        runClicks: save.runClicks,
+        runSeconds: save.runSeconds,
         savedAt: save.savedAt,
         units: save.units.map((u) => ({ unitId: u.unitId, owned: u.owned }))
       }
@@ -100,7 +124,7 @@ export const loadSave = async (req: express.Request, res: express.Response) => {
  *             schema:
  *               $ref: '#/components/schemas/StoreSaveResponse'
  *       '400':
- *         description: Missing or invalid fields
+ *         description: Missing required fields, invalid units, or invalid (present but malformed) prestige fields
  *         content:
  *           application/json:
  *             schema:
@@ -119,8 +143,18 @@ export const storeSave = async (req: express.Request, res: express.Response) => 
       return;
     }
 
-    const { tokens, totalTokensEarned, totalClicks, elapsedSeconds, units } =
-      req.body as SaveBody;
+    const {
+      tokens,
+      totalTokensEarned,
+      totalClicks,
+      elapsedSeconds,
+      phdCount,
+      prestigeCount,
+      runTokensEarned,
+      runClicks,
+      runSeconds,
+      units
+    } = req.body as SaveBody;
 
     if (
       typeof tokens !== "number" ||
@@ -140,11 +174,28 @@ export const storeSave = async (req: express.Request, res: express.Response) => 
       return;
     }
 
+    if (
+      !isOptionalCount(phdCount) ||
+      !isOptionalCount(prestigeCount) ||
+      !isOptionalCount(runClicks) ||
+      !isOptionalAmount(runTokensEarned) ||
+      !isOptionalAmount(runSeconds)
+    ) {
+      const r = Responses.SAVE.INVALID_PRESTIGE;
+      res.status(r.status).json(r.body);
+      return;
+    }
+
     const save = await upsertSave(userId, {
       tokens,
       totalTokensEarned,
       totalClicks,
       elapsedSeconds,
+      phdCount,
+      prestigeCount,
+      runTokensEarned,
+      runClicks,
+      runSeconds,
       units
     });
 
