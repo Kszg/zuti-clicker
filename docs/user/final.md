@@ -69,8 +69,11 @@ A bal oldali panel valós időben mutatja a játékod aktuális állását:
 | **Total Earned** | Az összes valaha szerzett token (nem csökken vásárlásnál) |
 | **Total Clicks** | Az összes eddigi kattintásod száma |
 | **Time Played** | Az eltelt játékidő |
+| **PhDs Earned** | Az eddig megszerzett PhD-k száma (lásd „Fokozat (Prestige)" lentebb) |
 
 A token/s érték a játék elején 0.00-ként jelenik meg, amíg az első egységeket meg nem veszed.
+
+A „Total Earned", „Total Clicks", „Time Played" és „PhDs Earned" statisztikák **egész játékodra** vonatkoznak, és fokozatszerzés (prestige) után sem állnak vissza. Ezek alatt egy „This Run" (Ez a menet) blokk mutatja ugyanezt **csak a jelenlegi menetre**: **Run Earned**, **Run Clicks**, **Run Time** — ezek nullázódnak minden fokozatszerzéskor.
 
 ---
 
@@ -112,6 +115,23 @@ Egy egység addig rejtett, amíg az összes szerzett tokened nem éri el az alap
 
 ---
 
+## Fokozat (Prestige)
+
+Amint egy menetben (a legutóbbi fokozatszerzés óta) legalább 1 000 000 tokent szereztél, a bal oldali oszlop alján megjelenik a **„Fokozat"** panel:
+
+- **PHDS OWNED**: Az eddig megszerzett PhD-k száma.
+- **+X% Production / -X% Unit cost**: A PhD-id által adott állandó bónuszok — minden PhD +2% termelést és -0,5% egységárat ad, a kedvezmény legfeljebb -50%-ig.
+- **Progress to next PhD**: Egy folyamatjelző, ami mutatja, mennyire vagy közel a következő PhD-hoz.
+- **„Defend Thesis" (Disszertáció megvédése) gomb**: Aktívvá válik, amint legalább 1 PhD-t érsz el az aktuális menetben.
+
+A gombra kattintva egy megerősítő ablak jelenik meg, amely megmutatja, pontosan hány PhD-t kapnál, és hogyan változna a termelésed/egységáraid. **Fontos**: a fokozatszerzés véglegesen **visszaállítja a jelenlegi tokenjeidet, az összes megvásárolt egységet és a menet statisztikáit (Run Earned/Clicks/Time)**, cserébe a PhD-id és az ebből adódó bónuszok **véglegesen megmaradnak**, és minden jövőbeli menetedben érvényesülnek.
+
+Vendégként is fokozatot szerezhetsz — ilyenkor a megerősítő ablak egy külön figyelmeztetést mutat, hogy a PhD-id (a többi haladásoddal együtt) elvesznek, ha bezárod a lapot bejelentkezés nélkül.
+
+Sikeres fokozatszerzés után egy teljes képernyős „ünneplés" jelenik meg: a megszerzett PhD-k száma animálva számol fel, majd egy „Begin Anew" (Új kezdet) gombbal térhetsz vissza a (már visszaállított) játékhoz. Ez az ünneplés a Beállítások panelben „Brief"-re (Rövidre) kapcsolható, ekkor csak a megerősítő ablak jelenik meg, teljes képernyős animáció nélkül.
+
+---
+
 ## Mentés és szinkronizálás
 
 Ha be vagy jelentkezve, a fejlécben megjelennek a mentési vezérlők:
@@ -119,11 +139,7 @@ Ha be vagy jelentkezve, a fejlécben megjelennek a mentési vezérlők:
 ### „Sync" gomb
 Azonnali mentés. A jelenlegi játékállapot (tokenek, egységek, statisztikák) elküldésre kerül a szerverre. Sikeres mentés esetén a gomb „✓"-re vált néhány másodpercre.
 
-### „Auto" gomb
-Az automatikus mentés be- és kikapcsolása. Ha be van kapcsolva (kék szín), a rendszer a beállított időközönként automatikusan elmenti a játékot.
-
-### Időközválasztó (15s / 30s / 1m / 5m)
-Csak akkor látható, ha az autosave be van kapcsolva. Meghatározza, milyen sűrűn mentsen a rendszer automatikusan. Alapértelmezetten 30 másodperc.
+Az automatikus mentés be/ki kapcsolása és az időköz beállítása a **Beállítások** panelbe költözött (lásd lentebb) — a fejlécben csak a gyors „Sync" gomb és a felhasználói menü maradt.
 
 ### Felhasználói menü (`Felhasználónév`)
 A felhasználónevedre kattintva legördülő menü jelenik meg:
@@ -134,16 +150,31 @@ A felhasználónevedre kattintva legördülő menü jelenik meg:
 
 ## Téma és nyelv
 
-A fejléc jobb szélén két gomb található:
+A fejléc jobb szélén gyorsgombok találhatók:
 
 - **Nyelv**: Angolra vagy magyarra váltás. Az összes szöveg azonnal megváltozik.
 - **Téma**: Sötét és világos megjelenési mód közötti váltás.
+- **⚙️ (fogaskerék)**: Megnyitja a teljes Beállítások panelt (lásd lentebb).
+
+Bejelentkezve ezek a beállítások (a téma, a nyelv, az autosave és a fokozat-ünneplés preferencia) a szerveren is elmentődnek, így egy másik böngészőben vagy eszközön bejelentkezve automatikusan visszaáll ugyanaz a beállítás. Vendégként ezek csak a böngésződ helyi tárolójában (`localStorage`) maradnak meg — egy másik eszközön nem lesznek jelen.
+
+---
+
+## Beállítások
+
+A fejléc ⚙️ gombjára kattintva megnyílik a Beállítások ablak, három szekcióval:
+
+- **Megjelenés**: Téma (Sötét/Világos), Nyelv (EN/HU).
+- **Játék**: Fokozatszerzés ünneplése — **Full ceremony** (teljes képernyős animáció) vagy **Brief** (csak a megerősítő ablak). Érdemes az első néhány fokozatszerzés után Brief-re váltani, ha az animáció helyett gyorsabban szeretnél tovább játszani.
+- **Mentés**: Automatikus mentés be/ki kapcsolása, és — ha be van kapcsolva — az időköz (15s / 30s / 1m / 5m).
+
+A „Done" (Kész) gombbal zárható be az ablak.
 
 ---
 
 ## Bezárás előtt
 
-Ha az oldalon van bármi haladásod (legalább egy kattintás történt), a böngésző figyelmeztet, ha megpróbálod bezárni vagy frissíteni az oldalt:
+Ha az oldalon van bármi haladásod (legalább egy kattintás történt, vagy az egységeid már termeltek valamennyi tokent, vagy van legalább egy PhD-d), a böngésző figyelmeztet, ha megpróbálod bezárni vagy frissíteni az oldalt:
 
 > „Biztosan el akarsz navigálni? Elveszítheted a módosításokat."
 
