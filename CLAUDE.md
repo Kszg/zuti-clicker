@@ -133,8 +133,7 @@ comment pointing at the other copy, and update both in the same change.
   `@vue/test-utils`'s `DOMWrapper`), and clear `document.body.innerHTML`
   between tests so a previous test's teleported content doesn't leak into
   the next one's query.
-- As of this writing, the frontend has no test framework set up yet. If you
-  add the first frontend tests, use Vitest with specs co-located under
+- The frontend uses Vitest, with specs co-located under
   `src/**/__tests__/*.spec.ts` next to the code they cover, a standalone
   `vitest.config.ts` (don't merge it with `vite.config.ts` — that one
   carries dev-only plugins/proxy config that don't belong in a test run),
@@ -216,6 +215,33 @@ any key added to one is added to the other in the same change.
   UI). End commit messages and PR descriptions with the attribution footer
   currently specified by the harness for this session.
 - Check `git status` before any destructive git operation.
+
+## CI/CD
+
+Two GitHub Actions workflows run on the self-hosted runner (`vbServer`, bare
+metal, no VM/Docker for the runner itself):
+
+- `.github/workflows/ci.yml` — on every PR into `main`: `typecheck` (api
+  `tsc --noEmit` + frontend `vue-tsc --build`), `frontend-tests` (Vitest),
+  and `api-tests` (Jest against a live server + a dedicated `zutiClickerTest`
+  database, never production) run as separate jobs, each uploading a
+  `junit-<stage>` artifact. A `reports` job turns those into
+  `.html`/`.ods`/`.md`/`.json` via `.github/scripts/junit-report.mjs`; a
+  `summary` job publishes the result as a job summary, a sticky PR comment,
+  and inline check-run annotations.
+- `.github/workflows/deploy.yml` — on every push to `main`: builds and pushes
+  both images to GHCR (`sha-<short_sha>` + `latest` always, the bare
+  `<version>` when `api/package.json` and `frontend/package.json`'s versions
+  have moved past the latest `v*` tag), cuts a GitHub release when that
+  happens, then syncs `docker-compose.prod.yml` into the deploy directory on
+  the host and does `docker compose pull && up -d` — never touching the
+  host's `.env`, and never running `prisma migrate deploy` (migrations stay
+  the manual step described above).
+
+Bump both `package.json` versions together when shipping a release-worthy
+change — that comparison is the only source of truth for whether a push cuts
+a release. See `docs/developer/final.md`'s "CI/CD" section for the full
+job-by-job breakdown and the rollback recipe.
 
 ## Environment notes
 
