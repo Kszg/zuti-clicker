@@ -28,7 +28,7 @@ describe("Settings endpoints - authenticated", () => {
     const loginRes = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
     cookie = rawHeader.split(";")[0];
   });
 
@@ -179,7 +179,8 @@ describe("Settings endpoints - cross-device", () => {
     const firstLogin = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const firstCookie = (firstLogin.headers["set-cookie"] as string[])[0].split(";")[0];
+    const firstCookieHeader = firstLogin.headers["set-cookie"] as unknown as string[];
+    const firstCookie = firstCookieHeader[0].split(";")[0];
 
     await api.put("/settings").set("Cookie", firstCookie).send(TestData.VALID_SETTINGS);
 
@@ -188,7 +189,8 @@ describe("Settings endpoints - cross-device", () => {
     const secondLogin = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const secondCookie = (secondLogin.headers["set-cookie"] as string[])[0].split(";")[0];
+    const secondCookieHeader = secondLogin.headers["set-cookie"] as unknown as string[];
+    const secondCookie = secondCookieHeader[0].split(";")[0];
 
     const res = await api.get("/settings").set("Cookie", secondCookie);
     expect(res.status).toBe(200);
