@@ -3,13 +3,13 @@ import { ref, watch } from "vue";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "./authStore";
 import { useGameStore } from "./gameStore";
+import { useSettingsStore } from "./settingsStore";
 
 export const useSaveStore = defineStore("save", () => {
   const auth = useAuthStore();
   const game = useGameStore();
+  const settings = useSettingsStore();
 
-  const autosaveEnabled = ref(true);
-  const autosaveIntervalSecs = ref(30);
   const lastSyncedAt = ref<Date | null>(null);
   const isSyncing = ref(false);
   const syncError = ref<string | null>(null);
@@ -25,15 +25,18 @@ export const useSaveStore = defineStore("save", () => {
 
   function _startTimer(): void {
     _clearTimer();
-    if (autosaveEnabled.value && auth.isLoggedIn) {
+    if (settings.autosaveEnabled && auth.isLoggedIn) {
       _timer = setInterval(() => {
         void sync();
-      }, autosaveIntervalSecs.value * 1000);
+      }, settings.autosaveIntervalSecs * 1000);
     }
   }
 
+  // Getter functions, not the bare refs: settingsStore's autosave prefs are
+  // read off a setup-store instance here, so a bare ref wouldn't be reactive
+  // to changes made through the store's own actions.
   watch(
-    [autosaveEnabled, autosaveIntervalSecs, () => auth.isLoggedIn],
+    [() => settings.autosaveEnabled, () => settings.autosaveIntervalSecs, () => auth.isLoggedIn],
     _startTimer,
     { immediate: true }
   );
@@ -51,8 +54,18 @@ export const useSaveStore = defineStore("save", () => {
     }
   }
 
+  // If a sync is requested while one is already in flight (e.g. a prestige
+  // immediately followed by a manual/auto sync), it is not dropped — it runs
+  // once more immediately after the in-flight one finishes, capturing
+  // whatever the store looks like by then.
+  let _queued = false;
+
   async function sync(): Promise<void> {
-    if (!auth.isLoggedIn || isSyncing.value) return;
+    if (!auth.isLoggedIn) return;
+    if (isSyncing.value) {
+      _queued = true;
+      return;
+    }
     isSyncing.value = true;
     syncError.value = null;
     try {
@@ -62,18 +75,32 @@ export const useSaveStore = defineStore("save", () => {
       syncError.value = (e as ApiError).message;
     } finally {
       isSyncing.value = false;
+      if (_queued) {
+        _queued = false;
+        void sync();
+      }
     }
   }
 
   async function resetSave(): Promise<void> {
     if (!auth.isLoggedIn) return;
-    await api.save.reset();
+    // Delete server-side first; if this throws, local game state is left
+    // intact rather than wiped while the server row still exists. Recording
+    // the failure in syncError (rather than swallowing it) means the existing
+    // sync-status indicator in the header shows the player it didn't work,
+    // instead of the confirm modal silently closing as if it had.
+    try {
+      await api.save.reset();
+    } catch (e) {
+      syncError.value = (e as ApiError).message;
+      throw e;
+    }
+    game.hardReset();
     lastSyncedAt.value = null;
+    syncError.value = null;
   }
 
   return {
-    autosaveEnabled,
-    autosaveIntervalSecs,
     lastSyncedAt,
     isSyncing,
     syncError,

@@ -56,13 +56,6 @@ async function logout() {
   userMenuOpen.value = false;
   await auth.logout();
 }
-
-const intervalOptions = [
-  { value: 15, label: "15s" },
-  { value: 30, label: "30s" },
-  { value: 60, label: "1m" },
-  { value: 300, label: "5m" }
-];
 </script>
 
 <template>
@@ -93,29 +86,6 @@ const intervalOptions = [
       </span>
       <span>{{ save.isSyncing ? t("save.syncing") : t("save.sync") }}</span>
     </button>
-
-    <!-- Autosave toggle -->
-    <button
-      class="ctrl-btn autosave-btn"
-      :class="{ active: save.autosaveEnabled }"
-      @click="save.autosaveEnabled = !save.autosaveEnabled"
-    >
-      <span>{{ save.autosaveEnabled ? "✓" : "✗" }}</span>
-      <span>{{ t("save.autosave") }}</span>
-    </button>
-
-    <!-- Interval select (only when autosave on) -->
-    <select
-      v-if="save.autosaveEnabled"
-      v-model="save.autosaveIntervalSecs"
-      class="interval-select"
-    >
-      <option
-        v-for="opt in intervalOptions"
-        :key="opt.value"
-        :value="opt.value"
-      >{{ opt.label }}</option>
-    </select>
 
     <!-- User dropdown -->
     <div ref="userMenuRef" class="user-menu">
@@ -173,24 +143,6 @@ const intervalOptions = [
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .sync-icon.spinning { display: inline-block; animation: spin 0.7s linear infinite; }
-
-.autosave-btn.active { border-color: var(--accent); color: var(--accent-text); }
-
-.interval-select {
-  padding: 5px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-family: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-  transition: border-color var(--transition-fast);
-  height: 30px;
-}
-.interval-select:hover { border-color: var(--accent); }
 
 .user-menu { position: relative; }
 

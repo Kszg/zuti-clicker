@@ -78,6 +78,8 @@ pnpm test
 
 A tesztek a `tests/` mappában találhatók. Az összes teszt a `TestData` osztályból veszi az adatokat (`tests/test-data.ts`); a belépési adatokat minden futtatás véletlenszerűen generálja, a mentési payloadok hardkódoltak.
 
+Mivel a tesztek élő szerver ellen, valós adatbázisban hoznak létre `test_<random>@example.com` felhasználókat, ezek takarítására szolgál a `pnpm cleanup:test-users` script (`scripts/cleanup-test-users.ts`). Alapértelmezetten csak szimulál (dry run) és kiírja, mit törölne; a tényleges törléshez `--apply` kapcsoló szükséges: `pnpm cleanup:test-users --apply`. A script szigorú, `generateUser()` mintázatához illeszkedő reguláris kifejezéssel dönti el, mely sorokat érinti — az SQL-szűrés csak egy durva előszűrés, sosem a végső hatóság.
+
 ---
 
 ## Frontend
@@ -106,6 +108,18 @@ pnpm build # type-check + bundle
 pnpm preview # a build előnézete lokálisan
 ```
 
+### Tesztek futtatása
+
+A frontend a Vitest keretrendszert használja, valós szerver vagy adatbázis nélkül:
+
+```bash
+pnpm test          # egyszeri futtatás
+pnpm test:watch    # watch mód fejlesztéshez
+pnpm test:coverage # lefedettségi riport
+```
+
+A tesztek a `src/**/__tests__/*.spec.ts` minta alatt találhatók, a forrásfájlok mellett (pl. `src/utils/__tests__/prestige.spec.ts`).
+
 ---
 
 ## Architektúra áttekintő
@@ -118,25 +132,39 @@ router/ → controllers/ → database/models/ → Prisma → MariaDB
          middlewares/  (isAuthenticated)
 ```
 
-- **`router/`** – Express route regisztráció (`authentication.ts`, `save.ts`)
+- **`router/`** – Express route regisztráció (`authentication.ts`, `save.ts`, `settings.ts`)
 - **`controllers/`** – Request/response kezelés, validáció, Swagger JSDoc
 - **`database/models/`** – Adatbázis műveletek (Prisma hívások)
 - **`middlewares/`** – `isAuthenticated`: session token ellenőrzés, `req.identity` feltöltése
 - **`helpers/`** – HMAC-SHA256 hitelesítés, random token generálás
 - **`constants/responses.ts`** – Centralizált HTTP válaszkódok és üzenetek
+- **`constants/settings.ts`** – A `UserSettings` mezők megengedett értékei (téma, nyelv, autosave-intervallum, fokozatszerzés-ünneplés) és alapértékei — a `config/swagger.ts` és a `controllers/settings.ts` egyaránt ebből importál, hogy ne csúszhassanak szét
+
+#### Végpontok
+
+| Metódus | Útvonal | Hitelesítés | Leírás |
+|---|---|---|---|
+| `POST` | `/auth/register`, `/auth/login`, `/auth/logout` | – / kötelező | Regisztráció, bejelentkezés, kijelentkezés |
+| `GET` | `/auth/me` | kötelező | Bejelentkezett felhasználó adatai |
+| `GET`, `PUT`, `DELETE` | `/save` | kötelező | Játékmentés betöltése, felülírása (részlegesen: a prestige mezők opcionálisak), törlése |
+| `GET`, `PUT` | `/settings` | kötelező | Felhasználói beállítások betöltése (alapértékek, ha még nincs mentve) és részleges frissítése |
+
+A `PUT /save` öt prestige-mezője (`phdCount`, `prestigeCount`, `runTokensEarned`, `runClicks`, `runSeconds`) **opcionális**: egy régebbi kliens, amely nem ismeri ezeket, biztonságosan tud menteni — a hiányzó mezőket a szerver a már tárolt értéken hagyja (nem nullázza), első mentésnél pedig az életút-mezőkből tölti fel őket.
 
 ### Frontend state management
 
 ```
 App.vue
   ├── useGameLoop()          → gameStore.tick() 20x/s
+  ├── usePrestige()          → gameStore.prestige() -> ceremónia/szinkron
   ├── authStore              → session check, login/register/logout
-  ├── saveStore              → load/sync/reset, autosave timer
-  ├── uiStore                → modal állapotok
-  └── gameStore              → tokenek, egységek, statisztikák
+  ├── settingsStore          → téma, nyelv, autosave, ceremónia — localStorage + szerver szinkron
+  ├── saveStore               → load/sync/reset (autosave-időzítő a settingsStore-ból olvas)
+  ├── uiStore                → modál állapotok
+  └── gameStore              → tokenek, egységek, statisztikák, prestige állapot
 ```
 
-A `saveStore` a `authStore`-tól függ: az autosave timer automatikusan elindul/leáll amikor `isLoggedIn` megváltozik.
+A `saveStore` a `authStore`-tól és a `settingsStore`-tól függ: az autosave-időzítő automatikusan elindul/leáll, amikor `isLoggedIn`, `autosaveEnabled` vagy `autosaveIntervalSecs` megváltozik. A `settingsStore` sosem importálja a `saveStore`-t (a függőségi irány mindig `settings → save`, nem fordítva), hogy elkerülje a körkörös importot.
 
 ---
 
@@ -164,7 +192,15 @@ Az egység azonnal megjelenik a shopban (a láthatóság automatikusan számíto
 1. Hozd létre a controller függvényt `src/controllers/` mappában (Swagger JSDoc kommenttel együtt).
 2. Regisztráld a route-ot a megfelelő `src/router/*.ts` fájlban.
 3. Ha szükséges, adj hozzá új válaszkódokat a `src/constants/responses.ts`-be.
-4. Írj teszteket a `tests/` mappában.
+4. Ha az endpoint új adatbázis-mezőt vagy táblát igényel: bővítsd a `prisma/schema.prisma`-t, majd `pnpm prisma migrate dev --create-only` paranccsal generálj vázlat-migrációt, formázd át a repo meglévő migrációinak stílusára (lásd pl. `20260912120000_add_prestige_fields`), és futtasd le. Additív változtatásnál (`NOT NULL DEFAULT ...`) a már futó, régebbi kliens nem törik el.
+5. Bővítsd a `config/swagger.ts` sémáit, ha a request/response alak változott.
+6. Írj teszteket a `tests/` mappában — ha a mező opcionális egy régebbi kliens kompatibilitása miatt, tesztelj mindkét irányban (jelen van / hiányzik).
+
+---
+
+## Prestige egyensúly (balance) állandók módosítása
+
+A PhD-formula és a szorzók egyetlen helyen, a `frontend/src/utils/gameConstants.ts` fájlban vannak (`PHD_TOKEN_SCALE`, `PHD_PRODUCTION_BONUS`, `PHD_COST_REDUCTION`, `PHD_COST_REDUCTION_CAP`); a képletek maguk a `frontend/src/utils/prestige.ts`-ben. Egy balance-módosítás után futtasd le a `frontend/src/utils/__tests__/prestige.spec.ts` és `costCalculator.spec.ts` teszteket — ezek konkrét, számított határértékeket ellenőriznek, amik a konstansok módosításával változni fognak.
 
 ---
 

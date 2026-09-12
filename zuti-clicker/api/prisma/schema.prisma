@@ -18,6 +18,7 @@ model User {
   updatedAt      DateTime        @updatedAt
   authentication Authentication?
   gameSave       GameSave?
+  settings       UserSettings?
 }
 
 model Authentication {
@@ -37,6 +38,11 @@ model GameSave {
   totalTokensEarned Float      @default(0)
   totalClicks       Int        @default(0)
   elapsedSeconds    Float      @default(0)
+  phdCount          Int        @default(0)
+  prestigeCount     Int        @default(0)
+  runTokensEarned   Float      @default(0)
+  runClicks         Int        @default(0)
+  runSeconds        Float      @default(0)
   savedAt           DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   units             UnitSave[]
@@ -50,4 +56,16 @@ model UnitSave {
   owned      Int      @default(0)
 
   @@unique([gameSaveId, unitId])
+}
+
+model UserSettings {
+  id                   Int      @id @default(autoincrement())
+  userId               Int      @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme                String   @default("dark") @db.VarChar(16)
+  language             String   @default("en") @db.VarChar(16)
+  autosaveEnabled      Boolean  @default(true)
+  autosaveIntervalSecs Int      @default(30)
+  prestigeCeremony     String   @default("full") @db.VarChar(16)
+  updatedAt            DateTime @updatedAt
 }

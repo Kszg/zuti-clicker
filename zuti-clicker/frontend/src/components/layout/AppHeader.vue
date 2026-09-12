@@ -2,17 +2,18 @@
 import { useI18n } from "vue-i18n";
 import { storeToRefs } from "pinia";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useUiStore } from "@/stores/uiStore";
 import SaveBar from "@/components/layout/SaveBar.vue";
 import type { Language } from "@/types";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const settings = useSettingsStore();
+const ui = useUiStore();
 const { theme, language } = storeToRefs(settings);
 
 function toggleLanguage() {
   const next: Language = language.value === "en" ? "hu" : "en";
   settings.setLanguage(next);
-  locale.value = next;
 }
 </script>
 
@@ -36,6 +37,14 @@ function toggleLanguage() {
         :title="t('settings.toggleTheme')"
       >
         <span>{{ theme === "dark" ? "☀️" : "🌙" }}</span>
+      </button>
+
+      <button
+        class="ctrl-btn icon-btn"
+        @click="ui.settingsModalOpen = true"
+        :title="t('settings.open')"
+      >
+        <span>⚙️</span>
       </button>
     </div>
   </header>

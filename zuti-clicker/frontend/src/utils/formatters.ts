@@ -1,23 +1,44 @@
-const SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc"];
+const SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
+// One magnitude past the last suffix ("Dc" = 1e33) — beyond this we fall back
+// to compact exponential notation rather than let the suffix ladder run out
+// and produce unreadable digit strings (e.g. the old "999999999999999872.00Oc").
+const EXPONENTIAL_THRESHOLD = 1e36;
 
-export function formatNumber(n: number, decimals = 2): string {
-  if (!isFinite(n)) return "0";
-  if (n < 1000) return Math.floor(n).toString();
+function formatScaled(n: number, decimals: number): string {
+  if (n >= EXPONENTIAL_THRESHOLD) {
+    const [mantissa, exponent] = n.toExponential(decimals).split("e");
+    return `${mantissa}e${Number(exponent)}`; // "1.00e36", not "1.00e+36"
+  }
   const exp = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
   const suffix = SUFFIXES[exp] ?? "";
   const scaled = n / Math.pow(1000, exp);
   return scaled.toFixed(decimals) + suffix;
 }
 
+export function formatNumber(n: number, decimals = 2): string {
+  if (Number.isNaN(n)) return "0";
+  if (!isFinite(n)) return "∞";
+  if (n < 1000) return Math.floor(n).toString();
+  return formatScaled(n, decimals);
+}
+
 // TPS, per-unit production -> shows decimals when value < 100
 export function formatRate(n: number): string {
-  if (!isFinite(n) || n === 0) return "0.00";
+  if (Number.isNaN(n)) return "0.00";
+  if (!isFinite(n)) return "∞";
+  if (n === 0) return "0.00";
   if (n < 100) return n.toFixed(2);
   if (n < 1000) return Math.floor(n).toString();
-  const exp = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
-  const suffix = SUFFIXES[exp] ?? "";
-  const scaled = n / Math.pow(1000, exp);
-  return scaled.toFixed(2) + suffix;
+  return formatScaled(n, 2);
+}
+
+// Whole-percent rounding (Math.round) misrepresents a half-percent-per-step
+// rate: e.g. a single PhD's true 0.5% cost discount rounds up to "1%", making
+// it look exactly double the real rate. Keeps one decimal only when it's not
+// a whole number, so "1 PhD" reads "0.5%" and "2 PhD" still reads "1%".
+export function formatPercent(value: number): string {
+  if (!isFinite(value)) return "0";
+  return value.toFixed(1).replace(/\.0$/, "");
 }
 
 export function formatTime(seconds: number): string {

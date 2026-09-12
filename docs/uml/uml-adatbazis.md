@@ -22,9 +22,14 @@ erDiagram
         Int     id                PK "Egyedi azonosító (auto)"
         Int     userId            FK "Kapcsolódó felhasználó"
         Float   tokens               "Aktuális token egyenleg"
-        Float   totalTokensEarned    "Összes szerzett token"
-        Int     totalClicks          "Összes kattintás"
-        Float   elapsedSeconds       "Eltelt játékidő (másodperc)"
+        Float   totalTokensEarned    "Összes szerzett token (életút)"
+        Int     totalClicks          "Összes kattintás (életút)"
+        Float   elapsedSeconds       "Eltelt játékidő, életút (másodperc)"
+        Int     phdCount             "Összegyűjtött PhD-k száma"
+        Int     prestigeCount        "Fokozatszerzések (prestige) száma"
+        Float   runTokensEarned      "Aktuális menetben szerzett token"
+        Int     runClicks            "Aktuális menetbeli kattintások"
+        Float   runSeconds           "Aktuális menet ideje (másodperc)"
         DateTime savedAt             "Utolsó mentés ideje"
         DateTime updatedAt           "Automatikus frissítés"
     }
@@ -36,8 +41,20 @@ erDiagram
         Int     owned           "Megvásárolt darabszám"
     }
 
+    UserSettings {
+        Int      id                   PK "Egyedi azonosító (auto)"
+        Int      userId               FK "Kapcsolódó felhasználó"
+        String   theme                   "'dark' vagy 'light'"
+        String   language                "'en' vagy 'hu'"
+        Boolean  autosaveEnabled         "Automatikus mentés be/ki"
+        Int      autosaveIntervalSecs    "Automatikus mentés gyakorisága (mp)"
+        String   prestigeCeremony        "'full' vagy 'brief'"
+        DateTime updatedAt               "Utolsó módosítás"
+    }
+
     User ||--o| Authentication : "rendelkezik"
     User ||--o| GameSave       : "rendelkezik"
+    User ||--o| UserSettings   : "rendelkezik"
     GameSave ||--o{ UnitSave   : "tartalmaz"
 ```
 
@@ -52,8 +69,13 @@ A `User` táblával 1:1 kapcsolatban álló tábla, amely a hitelesítéshez sz�
 ### `GameSave`
 Felhasználónként legfeljebb egy mentés létezhet (1:1 kapcsolat a `User` táblával). Az összesített játékstatisztikákat (egyenleg, összes szerzett token, kattintások száma, eltelt idő) tárolja. A `savedAt` mező minden `PUT /save` hívásnál frissül.
 
+A `totalTokensEarned`/`totalClicks`/`elapsedSeconds` mezők **életút-szintűek**: soha nem állnak vissza. A `phdCount`/`prestigeCount` mezők a prestige-rendszer (lásd `PUT /save` és a frontend `gameStore.prestige()`) által megszerzett, szintén életút-szintű PhD-kat és fokozatszerzéseket számolják. A `runTokensEarned`/`runClicks`/`runSeconds` mezők az **aktuális menetre** vonatkoznak: fokozatszerzéskor (`prestige()`) nullázódnak, míg a fenti életút-mezők változatlanok maradnak. Egy PhD-t korábban nem használt (a prestige-rendszer bevezetése előtti) mentésnél a `run*` mezők a megfelelő életút-mezőkből lettek visszatöltve, mivel egyetlen, még le nem zárt menetnek felelnek meg.
+
 ### `UnitSave`
 Az egyes egységtípusokhoz tartozó megvásárolt darabszámokat tárolja. Egy `GameSave`-hez több `UnitSave` sor is tartozhat (1:N kapcsolat). A `gameSaveId + unitId` páros egyedi kényszert kapott, hogy egy mentésen belül minden egységtípus legfeljebb egyszer szerepeljen. Ha a szülő `GameSave` törlésre kerül, az összes kapcsolódó `UnitSave` sor automatikusan törlődik (`ON DELETE CASCADE`).
+
+### `UserSettings`
+Felhasználónként legfeljebb egy beállítás-rekord létezik (1:1 kapcsolat a `User` táblával), amely a kliens-oldali preferenciákat (téma, nyelv, automatikus mentés, fokozatszerzés-ünneplés módja) tárolja szerver oldalon, hogy azok eszközök között szinkronizálódjanak bejelentkezett felhasználóknál. Vendégjátékosoknál ezek a beállítások csak a böngésző `localStorage`-ában élnek. Ha még nem létezik rekord egy felhasználóhoz, a `GET /settings` az alapértelmezett értékeket adja vissza `updatedAt: null` mellett. Ha a szülő `User` törlésre kerül, a `UserSettings` sor is automatikusan törlődik (`ON DELETE CASCADE`) — eltérően az `Authentication`/`GameSave` táblák `RESTRICT` viselkedésétől, mivel a beállítások a tulajdonos nélkül értelmezhetetlenek.
 
 ## Kapcsolatok összefoglalója
 
@@ -61,5 +83,6 @@ Az egyes egységtípusokhoz tartozó megvásárolt darabszámokat tárolja. Egy 
 |---|---|---|---|
 | `User` | `Authentication` | 1 : 0..1 | Egy felhasználóhoz legfeljebb egy hitelesítési rekord tartozik |
 | `User` | `GameSave` | 1 : 0..1 | Egy felhasználónak legfeljebb egy aktív mentése lehet |
+| `User` | `UserSettings` | 1 : 0..1 | Egy felhasználónak legfeljebb egy beállítás-rekordja lehet |
 | `GameSave` | `UnitSave` | 1 : 0..N | Egy mentés tetszőleges számú egységrekordot tartalmazhat |
 ```

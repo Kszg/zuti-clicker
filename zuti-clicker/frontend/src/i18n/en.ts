@@ -7,7 +7,12 @@ export default {
     perClick: "Per Click",
     totalEarned: "Total Earned",
     totalClicks: "Total Clicks",
-    timePlayed: "Time Played"
+    timePlayed: "Time Played",
+    phdCount: "PhDs Earned",
+    thisRun: "This Run",
+    runEarned: "Run Earned",
+    runClicks: "Run Clicks",
+    runTime: "Run Time"
   },
   clicker: { hint: "Click to earn tokens!" },
   units: {
@@ -41,7 +46,21 @@ export default {
   },
   settings: {
     toggleTheme: "Toggle theme",
-    language: "Language"
+    language: "Language",
+    open: "Settings",
+    title: "Settings",
+    appearance: "Appearance",
+    theme: "Theme",
+    themeDark: "Dark",
+    themeLight: "Light",
+    game: "Game",
+    ceremonyLabel: "Prestige ceremony",
+    ceremonyFull: "Full ceremony",
+    ceremonyBrief: "Brief",
+    saving: "Saving",
+    autosave: "Autosave",
+    autosaveInterval: "Interval",
+    closeBtn: "Done"
   },
   auth: {
     loginTab: "Log in",
@@ -57,7 +76,6 @@ export default {
   save: {
     sync: "Sync",
     syncing: "Syncing…",
-    autosave: "Auto",
     neverSynced: "Not synced",
     deleteSave: "Delete save",
     logout: "Log out",
@@ -73,6 +91,24 @@ export default {
     deleteSaveTitle: "Delete save file?",
     deleteSaveBody: "This will permanently erase your saved game. This cannot be undone.",
     deleteBtn: "Delete",
-    cancelBtn: "Cancel"
+    cancelBtn: "Cancel",
+    prestigeTitle: "Defend your thesis?",
+    prestigeGain: "You will earn {gain} PhD.",
+    prestigeLose: "Your tokens, units, and this run's progress will reset.",
+    prestigeGuestWarning:
+      "You're playing as a guest — your PhDs are lost when you close this tab. Log in to keep them.",
+    prestigeConfirmBtn: "Defend Thesis"
+  },
+  prestige: {
+    title: "Prestige",
+    lockedProgress: "Progress to next PhD",
+    unlockedHint: "Ready to defend your thesis.",
+    phdOwned: "PhDs owned",
+    production: "Production",
+    costDiscount: "Unit cost",
+    button: "Defend Thesis",
+    ceremonyGained: "PhD earned",
+    ceremonySubtext: "Your research permanently strengthens every future run.",
+    continueBtn: "Begin Anew"
   }
 };
