@@ -4,11 +4,14 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/authStore";
 import { useSaveStore } from "@/stores/saveStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useSettingsStore } from "@/stores/settingsStore";
+import { AUTOSAVE_INTERVAL_OPTIONS } from "@/utils/gameConstants";
 
 const { t } = useI18n();
 const auth = useAuthStore();
 const save = useSaveStore();
 const ui = useUiStore();
+const settings = useSettingsStore();
 
 // --- Sync button feedback ---
 const syncJustCompleted = ref(false);
@@ -62,7 +65,7 @@ const intervalOptions = [
   { value: 30, label: "30s" },
   { value: 60, label: "1m" },
   { value: 300, label: "5m" }
-];
+] satisfies { value: (typeof AUTOSAVE_INTERVAL_OPTIONS)[number]; label: string }[];
 </script>
 
 <template>
@@ -97,17 +100,17 @@ const intervalOptions = [
     <!-- Autosave toggle -->
     <button
       class="ctrl-btn autosave-btn"
-      :class="{ active: save.autosaveEnabled }"
-      @click="save.autosaveEnabled = !save.autosaveEnabled"
+      :class="{ active: settings.autosaveEnabled }"
+      @click="settings.autosaveEnabled = !settings.autosaveEnabled"
     >
-      <span>{{ save.autosaveEnabled ? "✓" : "✗" }}</span>
+      <span>{{ settings.autosaveEnabled ? "✓" : "✗" }}</span>
       <span>{{ t("save.autosave") }}</span>
     </button>
 
     <!-- Interval select (only when autosave on) -->
     <select
-      v-if="save.autosaveEnabled"
-      v-model="save.autosaveIntervalSecs"
+      v-if="settings.autosaveEnabled"
+      v-model="settings.autosaveIntervalSecs"
       class="interval-select"
     >
       <option

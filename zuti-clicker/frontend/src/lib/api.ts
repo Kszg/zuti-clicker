@@ -54,6 +54,14 @@ export interface SavePayload {
   totalTokensEarned: number;
   totalClicks: number;
   elapsedSeconds: number;
+  // Optional on the wire so an older client (predating prestige) still
+  // round-trips: the API preserves whatever is already stored when these are
+  // omitted, rather than resetting them to 0.
+  runTokensEarned?: number;
+  runClicks?: number;
+  runSeconds?: number;
+  phdCount?: number;
+  prestigeCount?: number;
   units: UnitEntry[];
 }
 
@@ -71,6 +79,29 @@ export interface ResetSaveResponse {
   message: string;
 }
 
+export interface SettingsPayload {
+  theme?: string;
+  language?: string;
+  autosaveEnabled?: boolean;
+  autosaveIntervalSecs?: number;
+  prestigeCeremony?: string;
+}
+export interface SettingsData {
+  theme: string;
+  language: string;
+  autosaveEnabled: boolean;
+  autosaveIntervalSecs: number;
+  prestigeCeremony: string;
+  updatedAt: string | null;
+}
+export interface LoadSettingsResponse {
+  settings: SettingsData;
+}
+export interface StoreSettingsResponse {
+  message: string;
+  settings: SettingsData;
+}
+
 export const api = {
   auth: {
     register: (username: string, email: string, password: string) =>
@@ -84,5 +115,9 @@ export const api = {
     load: () => request<LoadSaveResponse>("GET", "/save"),
     store: (payload: SavePayload) => request<StoreSaveResponse>("PUT", "/save", payload),
     reset: () => request<ResetSaveResponse>("DELETE", "/save")
+  },
+  settings: {
+    load: () => request<LoadSettingsResponse>("GET", "/settings"),
+    store: (payload: SettingsPayload) => request<StoreSettingsResponse>("PUT", "/settings", payload)
   }
 };

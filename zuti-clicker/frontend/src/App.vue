@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useSaveStore } from "@/stores/saveStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useGameStore } from "@/stores/gameStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import AppHeader from "@/components/layout/AppHeader.vue";
 import StatusColumn from "@/components/status/StatusColumn.vue";
 import ClickerArea from "@/components/clicker/ClickerArea.vue";
@@ -19,6 +20,7 @@ const auth = useAuthStore();
 const save = useSaveStore();
 const ui = useUiStore();
 const game = useGameStore();
+const settings = useSettingsStore();
 
 useGameLoop();
 
@@ -29,7 +31,9 @@ onMounted(async () => {
 watch(
   () => auth.isLoggedIn,
   async (loggedIn) => {
-    if (loggedIn) await save.load();
+    if (loggedIn) {
+      await Promise.all([save.load(), settings.loadFromServer()]);
+    }
   }
 );
 

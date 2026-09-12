@@ -5,14 +5,13 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import SaveBar from "@/components/layout/SaveBar.vue";
 import type { Language } from "@/types";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const settings = useSettingsStore();
 const { theme, language } = storeToRefs(settings);
 
 function toggleLanguage() {
   const next: Language = language.value === "en" ? "hu" : "en";
   settings.setLanguage(next);
-  locale.value = next;
 }
 </script>
 

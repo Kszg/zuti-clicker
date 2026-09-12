@@ -3,13 +3,13 @@ import { ref, watch } from "vue";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "./authStore";
 import { useGameStore } from "./gameStore";
+import { useSettingsStore } from "./settingsStore";
 
 export const useSaveStore = defineStore("save", () => {
   const auth = useAuthStore();
   const game = useGameStore();
+  const settings = useSettingsStore();
 
-  const autosaveEnabled = ref(true);
-  const autosaveIntervalSecs = ref(30);
   const lastSyncedAt = ref<Date | null>(null);
   const isSyncing = ref(false);
   const syncError = ref<string | null>(null);
@@ -25,15 +25,18 @@ export const useSaveStore = defineStore("save", () => {
 
   function _startTimer(): void {
     _clearTimer();
-    if (autosaveEnabled.value && auth.isLoggedIn) {
+    if (settings.autosaveEnabled && auth.isLoggedIn) {
       _timer = setInterval(() => {
         void sync();
-      }, autosaveIntervalSecs.value * 1000);
+      }, settings.autosaveIntervalSecs * 1000);
     }
   }
 
+  // Getter functions, not the bare refs: settingsStore's autosave prefs are
+  // read off a setup-store instance here, so a bare ref wouldn't be reactive
+  // to changes made through the store's own actions.
   watch(
-    [autosaveEnabled, autosaveIntervalSecs, () => auth.isLoggedIn],
+    [() => settings.autosaveEnabled, () => settings.autosaveIntervalSecs, () => auth.isLoggedIn],
     _startTimer,
     { immediate: true }
   );
@@ -90,8 +93,6 @@ export const useSaveStore = defineStore("save", () => {
   }
 
   return {
-    autosaveEnabled,
-    autosaveIntervalSecs,
     lastSyncedAt,
     isSyncing,
     syncError,
