@@ -1,11 +1,13 @@
-# Local build-from-source stack, used for development.
-# keep in sync with docker-compose.prod.yml (the GHCR-image-based stack that
-# .github/workflows/deploy.yml actually deploys)
+# Deployed via .github/workflows/deploy.yml: images are built and pushed to
+# GHCR on every push to main, then this file (synced into the deploy
+# directory on the host as-is) is used with `docker compose pull && up -d`.
+# IMAGE_TAG is passed as a shell env var on that command line (never written
+# to .env), so deploys pin an exact immutable tag while .env stays untouched.
+#
+# keep in sync with docker-compose.yml (the local build-from-source stack)
 services:
     api:
-        build:
-            context: ./api
-            dockerfile: Dockerfile
+        image: ghcr.io/vb2007/zuti-clicker-api:${IMAGE_TAG:-latest}
         container_name: zuticlicker-api
         environment:
             - NODE_ENV=production
@@ -37,11 +39,7 @@ services:
             start_period: 20s
 
     frontend:
-        build:
-            context: ./frontend
-            dockerfile: Dockerfile
-            args:
-                - VITE_API_BASE_URL=https://zuticlicker-api.vb2007.hu
+        image: ghcr.io/vb2007/zuti-clicker-frontend:${IMAGE_TAG:-latest}
         container_name: zuticlicker-frontend
         restart: unless-stopped
         networks:
