@@ -188,6 +188,7 @@ jobs:
       # DATABASE_* creds for the dedicated zutiClickerTest DB + a throwaway
       # CRYPTO_SECRET_KEY. Never touches production data.
       - name: Load CI environment file
+        id: load_env
         working-directory: zuti-clicker/api
         run: |
           ENV_CI_FILE="/mnt/raid1/zuti-clicker-ci/.env.ci"
@@ -254,7 +255,9 @@ jobs:
       # live DB (api/scripts/cleanup-test-users.ts), even though this is a
       # dedicated test database, so it doesn't grow unbounded across PRs.
       - name: Cleanup test users
-        if: always()
+        # Skip cleanly rather than crash on a missing Prisma client if the
+        # env file (and therefore everything after it) never even loaded.
+        if: always() && steps.load_env.outcome == 'success'
         working-directory: zuti-clicker/api
         run: pnpm cleanup:test-users --apply
 
