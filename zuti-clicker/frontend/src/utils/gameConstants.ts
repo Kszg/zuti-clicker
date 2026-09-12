@@ -13,3 +13,16 @@ export const UNIT_DEFINITIONS: UnitDefinition[] = [
 
 export const TICK_RATE = 20;
 export const BASE_TOKENS_PER_CLICK = 1;
+
+// Fraction of a unit's base cost the player must have earned (lifetime) before
+// it's revealed in the shop. Extracted from the inline 0.1 previously in UnitCard.vue.
+export const UNIT_REVEAL_FRACTION = 0.1;
+
+// Prestige ("PhD") balance constants.
+export const PHD_TOKEN_SCALE = 1_000_000;
+export const PHD_PRODUCTION_BONUS = 0.02;
+export const PHD_COST_REDUCTION = 0.005;
+export const PHD_COST_REDUCTION_CAP = 0.5;
+
+export const AUTOSAVE_INTERVAL_OPTIONS = [15, 30, 60, 300] as const;
+export const DEFAULT_AUTOSAVE_INTERVAL_SECS = 30;
