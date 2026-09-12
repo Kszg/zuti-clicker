@@ -119,6 +119,17 @@ export class TestData {
     units: []
   };
 
+  // Exceeds MySQL's signed INT range (2147483647) — must be rejected with a
+  // 400 rather than reaching Prisma and causing a 500.
+  static readonly SAVE_PHD_TOO_LARGE = {
+    tokens: 1,
+    totalTokensEarned: 1,
+    totalClicks: 1,
+    elapsedSeconds: 1,
+    phdCount: 3000000000,
+    units: []
+  };
+
   static readonly VALID_SETTINGS = {
     theme: "light",
     language: "hu",

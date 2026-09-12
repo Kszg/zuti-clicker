@@ -117,7 +117,7 @@ Egy egység addig rejtett, amíg az összes szerzett tokened nem éri el az alap
 
 ## Fokozat (Prestige)
 
-Amint egy menetben (a legutóbbi fokozatszerzés óta) legalább 1 000 000 tokent szereztél, a bal oldali oszlop alján megjelenik a **„Fokozat"** panel:
+Amint összesen (élete során, nem csak az aktuális menetben) legalább 100 000 tokent szereztél, a bal oldali oszlop alján megjelenik a **„Fokozat"** panel — ugyanaz a fokozatos feltárási logika, mint az egységeknél: a panel egyszer megjelenve mindig látható marad, akkor is, ha egy új menetet éppen csak elkezdtél. A tényleges fokozatszerzéshez (a „Defend Thesis" gomb aktiválódásához) az **aktuális menetben** kell legalább 1 000 000 tokent szerezned:
 
 - **PHDS OWNED**: Az eddig megszerzett PhD-k száma.
 - **+X% Production / -X% Unit cost**: A PhD-id által adott állandó bónuszok — minden PhD +2% termelést és -0,5% egységárat ad, a kedvezmény legfeljebb -50%-ig.

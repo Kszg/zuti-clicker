@@ -89,6 +89,19 @@ export const useSettingsStore = defineStore("settings", () => {
     i18n.global.locale.value = l;
   }, { immediate: true });
 
+  // A pending debounced push must not survive a logout: on a shared browser,
+  // a push that fires after a different account has since logged in would
+  // silently overwrite that account's settings with the previous user's.
+  watch(
+    () => auth.isLoggedIn,
+    (loggedIn) => {
+      if (!loggedIn && _pushTimer) {
+        clearTimeout(_pushTimer);
+        _pushTimer = null;
+      }
+    }
+  );
+
   watch(
     [theme, language, autosaveEnabled, autosaveIntervalSecs, prestigeCeremony],
     () => {

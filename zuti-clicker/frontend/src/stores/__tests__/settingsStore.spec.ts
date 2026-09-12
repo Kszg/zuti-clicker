@@ -183,6 +183,21 @@ describe("settingsStore", () => {
       expect(api.settings.store).not.toHaveBeenCalled();
     });
 
+    it("a pending debounced push is cancelled on logout (shared-browser regression)", async () => {
+      loginAs();
+      vi.useFakeTimers();
+      const settings = useSettingsStore();
+      const auth = useAuthStore();
+
+      settings.setLanguage("hu"); // schedules a push ~800ms out
+      auth.user = null; // logout before the debounce fires
+
+      await vi.advanceTimersByTimeAsync(2000);
+      vi.useRealTimers();
+
+      expect(api.settings.store).not.toHaveBeenCalled();
+    });
+
     it("debounces rapid changes into a single push", async () => {
       loginAs();
       vi.useFakeTimers();

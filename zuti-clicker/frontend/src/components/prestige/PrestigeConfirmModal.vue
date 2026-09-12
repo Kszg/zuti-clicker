@@ -4,23 +4,25 @@ import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { useAuthStore } from "@/stores/authStore";
 import { usePrestige } from "@/composables/usePrestige";
+import { getProductionMultiplier, getCostMultiplier } from "@/utils/prestige";
 
 const { t } = useI18n();
 const game = useGameStore();
 const auth = useAuthStore();
 const { cancelPrestige, confirmPrestige } = usePrestige();
 
+// Reuse the same formulas gameStore uses for the "before" values, rather
+// than re-deriving them, so a future balance tweak can't leave this preview
+// silently out of sync with what prestige() actually applies.
 const newPhdCount = computed(() => game.phdCount + game.phdGain);
 const productionBefore = computed(() => `x${game.productionMultiplier.toFixed(2)}`);
-const productionAfter = computed(() => {
-  const mult = 1 + 0.02 * newPhdCount.value;
-  return `x${mult.toFixed(2)}`;
-});
+const productionAfter = computed(
+  () => `x${getProductionMultiplier(newPhdCount.value).toFixed(2)}`
+);
 const costBefore = computed(() => `-${Math.round((1 - game.costMultiplier) * 100)}%`);
-const costAfter = computed(() => {
-  const discount = Math.min(0.5, 0.005 * newPhdCount.value);
-  return `-${Math.round(discount * 100)}%`;
-});
+const costAfter = computed(
+  () => `-${Math.round((1 - getCostMultiplier(newPhdCount.value)) * 100)}%`
+);
 </script>
 
 <template>

@@ -223,6 +223,15 @@ describe("Save endpoints - prestige validation", () => {
     expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
   });
 
+  it("rejects a phdCount beyond the Int column range with 400, not a 500", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_PHD_TOO_LARGE);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
   it("regression: a missing-fields body with otherwise-valid prestige fields still returns MISSING_FIELDS", async () => {
     const res = await api
       .put("/save")

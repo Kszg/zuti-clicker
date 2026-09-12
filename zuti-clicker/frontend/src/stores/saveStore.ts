@@ -85,8 +85,16 @@ export const useSaveStore = defineStore("save", () => {
   async function resetSave(): Promise<void> {
     if (!auth.isLoggedIn) return;
     // Delete server-side first; if this throws, local game state is left
-    // intact rather than wiped while the server row still exists.
-    await api.save.reset();
+    // intact rather than wiped while the server row still exists. Recording
+    // the failure in syncError (rather than swallowing it) means the existing
+    // sync-status indicator in the header shows the player it didn't work,
+    // instead of the confirm modal silently closing as if it had.
+    try {
+      await api.save.reset();
+    } catch (e) {
+      syncError.value = (e as ApiError).message;
+      throw e;
+    }
     game.hardReset();
     lastSyncedAt.value = null;
     syncError.value = null;

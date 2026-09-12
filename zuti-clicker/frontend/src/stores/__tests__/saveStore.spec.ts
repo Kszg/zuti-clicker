@@ -78,6 +78,9 @@ describe("saveStore", () => {
       const save = useSaveStore();
       await expect(save.resetSave()).rejects.toThrow("network down");
       expect(game.tokens).toBe(500);
+      // Surfaced via the existing sync-status indicator rather than silently
+      // discarded — see the App.vue confirm-delete handler.
+      expect(save.syncError).toBe("network down");
     });
 
     it("regression: after a reset, the next sync sends an all-zero payload (not the pre-reset data)", async () => {

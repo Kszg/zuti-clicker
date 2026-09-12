@@ -17,9 +17,9 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
   prestigeCeremony: "full"
 };
 
-const THEMES: readonly Theme[] = ["dark", "light"];
-const LANGUAGES: readonly Language[] = ["en", "hu"];
-const CEREMONIES: readonly PrestigeCeremony[] = ["full", "brief"];
+export const THEMES: readonly Theme[] = ["dark", "light"];
+export const LANGUAGES: readonly Language[] = ["en", "hu"];
+export const CEREMONIES: readonly PrestigeCeremony[] = ["full", "brief"];
 
 /**
  * Validates untrusted settings data (localStorage content is user-editable,

@@ -3,7 +3,7 @@ import { useI18n } from "vue-i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { AUTOSAVE_INTERVAL_OPTIONS } from "@/utils/gameConstants";
-import type { Language, PrestigeCeremony, Theme } from "@/types";
+import { THEMES, LANGUAGES, CEREMONIES } from "@/utils/settingsSchema";
 
 const { t } = useI18n();
 const settings = useSettingsStore();
@@ -34,7 +34,7 @@ function close() {
             <span class="field-label">{{ t("settings.theme") }}</span>
             <div class="seg-group" role="group">
               <button
-                v-for="opt in ['dark', 'light'] as Theme[]"
+                v-for="opt in THEMES"
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.theme === opt }"
@@ -49,7 +49,7 @@ function close() {
             <span class="field-label">{{ t("settings.language") }}</span>
             <div class="seg-group" role="group">
               <button
-                v-for="opt in ['en', 'hu'] as Language[]"
+                v-for="opt in LANGUAGES"
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.language === opt }"
@@ -68,7 +68,7 @@ function close() {
             <span class="field-label">{{ t("settings.ceremonyLabel") }}</span>
             <div class="seg-group" role="group">
               <button
-                v-for="opt in ['full', 'brief'] as PrestigeCeremony[]"
+                v-for="opt in CEREMONIES"
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.prestigeCeremony === opt }"

@@ -59,9 +59,10 @@ async function onConfirmDelete() {
   try {
     await save.resetSave();
   } catch {
-    // A failed delete leaves local game state untouched (see saveStore); at
-    // minimum, don't leave the confirm modal stuck open on an unhandled
-    // rejection.
+    // A failed delete leaves local game state untouched and records the
+    // failure in save.syncError (see saveStore), surfaced by the existing
+    // sync-status indicator in the header — this catch only keeps the
+    // confirm modal from getting stuck open on the rejection.
   } finally {
     ui.confirmDeleteOpen = false;
   }

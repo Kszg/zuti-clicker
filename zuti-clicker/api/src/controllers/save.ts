@@ -28,13 +28,18 @@ function isValidUnits(units: unknown): units is UnitInput[] {
   });
 }
 
+// MySQL/MariaDB signed INT range — phdCount, prestigeCount, and runClicks are
+// all Int columns, and a value outside this range makes Prisma throw, which
+// the catch block below would turn into a misleading 500 instead of a 400.
+const MAX_INT32 = 2147483647;
+
 // Prestige fields are optional (older clients omit them entirely), but a
 // *present* value must be a sane non-negative number. Number.isInteger matters
 // for the Int columns: a fractional value would make Prisma throw, which the
 // catch block below would turn into a misleading 500 instead of a 400.
 function isOptionalCount(value: unknown): value is number | undefined {
   if (value === undefined) return true;
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_INT32;
 }
 
 function isOptionalAmount(value: unknown): value is number | undefined {
