@@ -106,3 +106,138 @@ describe("Save endpoints - authenticated", () => {
     expect(res.body.save).toBeNull();
   });
 });
+
+describe("Save endpoints - prestige fields", () => {
+  let cookie: string;
+
+  beforeAll(async () => {
+    const user = TestData.generateUser();
+    await api.post("/auth/register").send(user);
+    const loginRes = await api
+      .post("/auth/login")
+      .send({ email: user.email, password: user.password });
+    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    cookie = rawHeader.split(";")[0];
+  });
+
+  it("PUT /save persists all five prestige fields", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.PRESTIGE_SAVE);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe(Responses.SAVE.SAVE_SUCCESS.body.message);
+  });
+
+  it("GET /save round-trips all five prestige fields", async () => {
+    const res = await api.get("/save").set("Cookie", cookie);
+    expect(res.status).toBe(200);
+    expect(res.body.save.phdCount).toBe(TestData.PRESTIGE_SAVE.phdCount);
+    expect(res.body.save.prestigeCount).toBe(TestData.PRESTIGE_SAVE.prestigeCount);
+    expect(res.body.save.runTokensEarned).toBe(TestData.PRESTIGE_SAVE.runTokensEarned);
+    expect(res.body.save.runClicks).toBe(TestData.PRESTIGE_SAVE.runClicks);
+    expect(res.body.save.runSeconds).toBe(TestData.PRESTIGE_SAVE.runSeconds);
+  });
+
+  it("PUT /save with a legacy-shaped body (no prestige keys) preserves the stored prestige fields", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.LEGACY_SAVE);
+    expect(res.status).toBe(200);
+
+    const getRes = await api.get("/save").set("Cookie", cookie);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.save.tokens).toBe(TestData.LEGACY_SAVE.tokens);
+    // The prestige fields from the earlier PRESTIGE_SAVE write must survive
+    // unchanged — omission preserves, it does not reset to zero.
+    expect(getRes.body.save.phdCount).toBe(TestData.PRESTIGE_SAVE.phdCount);
+    expect(getRes.body.save.prestigeCount).toBe(TestData.PRESTIGE_SAVE.prestigeCount);
+  });
+});
+
+describe("Save endpoints - prestige defaults on first save", () => {
+  let cookie: string;
+
+  beforeAll(async () => {
+    const user = TestData.generateUser();
+    await api.post("/auth/register").send(user);
+    const loginRes = await api
+      .post("/auth/login")
+      .send({ email: user.email, password: user.password });
+    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    cookie = rawHeader.split(";")[0];
+  });
+
+  it("a legacy-shaped body as the very first save seeds run fields from lifetime fields", async () => {
+    const putRes = await api.put("/save").set("Cookie", cookie).send(TestData.LEGACY_SAVE);
+    expect(putRes.status).toBe(200);
+
+    const res = await api.get("/save").set("Cookie", cookie);
+    expect(res.status).toBe(200);
+    expect(res.body.save.phdCount).toBe(0);
+    expect(res.body.save.prestigeCount).toBe(0);
+    expect(res.body.save.runTokensEarned).toBe(TestData.LEGACY_SAVE.totalTokensEarned);
+    expect(res.body.save.runClicks).toBe(TestData.LEGACY_SAVE.totalClicks);
+    expect(res.body.save.runSeconds).toBe(TestData.LEGACY_SAVE.elapsedSeconds);
+  });
+});
+
+describe("Save endpoints - prestige validation", () => {
+  let cookie: string;
+
+  beforeAll(async () => {
+    const user = TestData.generateUser();
+    await api.post("/auth/register").send(user);
+    const loginRes = await api
+      .post("/auth/login")
+      .send({ email: user.email, password: user.password });
+    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    cookie = rawHeader.split(";")[0];
+  });
+
+  it("rejects a negative phdCount", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.SAVE_NEGATIVE_PHD);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
+  it("rejects a fractional phdCount", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.SAVE_FRACTIONAL_PHD);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
+  it("rejects a string phdCount", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.SAVE_STRING_PHD);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
+  it("rejects a negative runTokensEarned", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.SAVE_NEGATIVE_RUN);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
+  it("rejects a null prestigeCount", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_NULL_PRESTIGE_COUNT);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
+  it("regression: a missing-fields body with otherwise-valid prestige fields still returns MISSING_FIELDS", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send({ ...TestData.SAVE_MISSING_FIELDS, phdCount: 3 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.MISSING_FIELDS.body.error);
+  });
+
+  it("regression: an invalid-units body with otherwise-valid prestige fields still returns INVALID_UNITS", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send({ ...TestData.SAVE_INVALID_UNITS, phdCount: 3 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_UNITS.body.error);
+  });
+});
