@@ -9,7 +9,10 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build"
+    "type-check": "vue-tsc --build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "author": "VB2007",
   "license": "AGPL-3.0-only",
@@ -25,11 +28,14 @@
     "@types/node": "^24.12.2",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@vue/test-utils": "^2.5.0",
     "@vue/tsconfig": "^0.9.1",
+    "happy-dom": "^20.14.5",
     "npm-run-all2": "^8.0.4",
     "typescript": "~6.0.2",
     "vite": "^8.0.8",
     "vite-plugin-vue-devtools": "^8.1.1",
+    "vitest": "^5.0.0",
     "vue-tsc": "^3.2.6"
   },
   "engines": {
