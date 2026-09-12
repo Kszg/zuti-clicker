@@ -18,7 +18,9 @@ const owned = computed(() => state.value?.owned ?? 0);
 
 const effectiveAmount = computed(() => {
   if (!def.value) return 0;
-  if (props.multiplier === "max") return getMaxBuyable(def.value, owned.value, game.tokens);
+  if (props.multiplier === "max") {
+    return getMaxBuyable(def.value, owned.value, game.tokens, game.costMultiplier);
+  }
   return props.multiplier;
 });
 
@@ -26,12 +28,7 @@ const cost = computed(() => game.getBuyCost(props.unitId, props.multiplier));
 const affordable = computed(() => game.canAfford(props.unitId, props.multiplier));
 const gainPerS = computed(() => game.getProductionGain(props.unitId, props.multiplier));
 
-const unitIdx = computed(() => UNIT_DEFINITIONS.findIndex((d) => d.id === props.unitId));
-
-const visible = computed(() => {
-  if (unitIdx.value === 0) return true;
-  return game.totalTokensEarned >= (def.value?.baseCost ?? Infinity) * 0.1;
-});
+const visible = computed(() => game.isUnitRevealed(props.unitId));
 
 const nameKey = computed(() => `units.names.${props.unitId}` as Parameters<typeof t>[0]);
 const descKey = computed(() => `units.descriptions.${props.unitId}` as Parameters<typeof t>[0]);

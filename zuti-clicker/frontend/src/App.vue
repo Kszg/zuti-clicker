@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/authStore";
 import { useSaveStore } from "@/stores/saveStore";
@@ -33,8 +33,14 @@ watch(
   }
 );
 
+// Widened beyond totalClicks so a pure idler (units doing all the work, zero
+// manual clicks) still gets the unsaved-progress warning.
+const hasProgress = computed(
+  () => game.totalClicks > 0 || game.totalTokensEarned > 0 || game.phdCount > 0
+);
+
 function handleBeforeUnload(e: BeforeUnloadEvent) {
-  if (game.totalClicks > 0) {
+  if (hasProgress.value) {
     e.preventDefault();
     e.returnValue = "";
   }
@@ -43,8 +49,15 @@ onMounted(() => window.addEventListener("beforeunload", handleBeforeUnload));
 onUnmounted(() => window.removeEventListener("beforeunload", handleBeforeUnload));
 
 async function onConfirmDelete() {
-  await save.resetSave();
-  ui.confirmDeleteOpen = false;
+  try {
+    await save.resetSave();
+  } catch {
+    // A failed delete leaves local game state untouched (see saveStore); at
+    // minimum, don't leave the confirm modal stuck open on an unhandled
+    // rejection.
+  } finally {
+    ui.confirmDeleteOpen = false;
+  }
 }
 </script>
 

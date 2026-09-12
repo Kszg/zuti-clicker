@@ -51,8 +51,18 @@ export const useSaveStore = defineStore("save", () => {
     }
   }
 
+  // If a sync is requested while one is already in flight (e.g. a prestige
+  // immediately followed by a manual/auto sync), it is not dropped — it runs
+  // once more immediately after the in-flight one finishes, capturing
+  // whatever the store looks like by then.
+  let _queued = false;
+
   async function sync(): Promise<void> {
-    if (!auth.isLoggedIn || isSyncing.value) return;
+    if (!auth.isLoggedIn) return;
+    if (isSyncing.value) {
+      _queued = true;
+      return;
+    }
     isSyncing.value = true;
     syncError.value = null;
     try {
@@ -62,13 +72,21 @@ export const useSaveStore = defineStore("save", () => {
       syncError.value = (e as ApiError).message;
     } finally {
       isSyncing.value = false;
+      if (_queued) {
+        _queued = false;
+        void sync();
+      }
     }
   }
 
   async function resetSave(): Promise<void> {
     if (!auth.isLoggedIn) return;
+    // Delete server-side first; if this throws, local game state is left
+    // intact rather than wiped while the server row still exists.
     await api.save.reset();
+    game.hardReset();
     lastSyncedAt.value = null;
+    syncError.value = null;
   }
 
   return {
