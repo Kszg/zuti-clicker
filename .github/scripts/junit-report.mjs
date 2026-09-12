@@ -45,7 +45,19 @@ function parseArgs(argv) {
 function findXmlFiles(dir) {
   const found = [];
   const walk = (d) => {
-    for (const entry of readdirSync(d)) {
+    // download-artifact never creates --input's directory at all when zero
+    // artifacts matched the pattern (e.g. every upstream stage failed or
+    // was cancelled before it could upload) - that's a legitimate "no
+    // results yet" case, not an error, so degrade to an empty report
+    // instead of crashing the whole reports/summary pipeline over it.
+    let entries;
+    try {
+      entries = readdirSync(d);
+    } catch (err) {
+      if (err.code === "ENOENT") return;
+      throw err;
+    }
+    for (const entry of entries) {
       const full = join(d, entry);
       const st = statSync(full);
       if (st.isDirectory()) walk(full);
