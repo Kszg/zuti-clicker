@@ -19,13 +19,13 @@ interface FloatEntry {
 const floats = ref<FloatEntry[]>([]);
 let uid = 0;
 
-function onCircleClick(e: MouseEvent) {
+function onCircleClick({ x, y }: { x: number; y: number }) {
   const earned = game.clickToken();
   const id = uid++;
   floats.value.push({
     id,
-    x: e.clientX + (Math.random() * 36 - 18),
-    y: e.clientY - 16,
+    x: x + (Math.random() * 36 - 18),
+    y: y - 16,
     amount: earned
   });
   setTimeout(() => {

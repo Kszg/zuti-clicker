@@ -14,7 +14,10 @@ export default {
     runClicks: "Run Clicks",
     runTime: "Run Time"
   },
-  clicker: { hint: "Click to earn tokens!" },
+  clicker: {
+    hint: "Click to earn tokens!",
+    ariaLabel: "Click Dr. Zuti Pál's portrait to earn tokens"
+  },
   units: {
     title: "Units",
     owned: "owned",

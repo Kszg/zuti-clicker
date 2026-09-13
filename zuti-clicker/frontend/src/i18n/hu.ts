@@ -14,7 +14,10 @@ export default {
     runClicks: "Menetbeli kattintás",
     runTime: "Menetidő"
   },
-  clicker: { hint: "Kattints a tokenekért!" },
+  clicker: {
+    hint: "Kattints a tokenekért!",
+    ariaLabel: "Kattints Dr. Zuti Pál portréjára tokenekért"
+  },
   units: {
     title: "Egységek",
     owned: "db",
