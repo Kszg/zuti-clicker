@@ -63,7 +63,17 @@ export default {
     saving: "Mentés",
     autosave: "Automatikus mentés",
     autosaveInterval: "Gyakoriság",
-    closeBtn: "Kész"
+    intervals: {
+      "15": "15s",
+      "30": "30s",
+      "60": "1p",
+      "300": "5p"
+    },
+    cancelBtn: "Mégse",
+    closeBtn: "Kész",
+    saved: "Beállítások elmentve",
+    savedLocal: "Beállítások elmentve ezen az eszközön",
+    saveFailed: "Nem sikerült menteni a beállításokat — ezen az eszközön elmentve"
   },
   auth: {
     loginTab: "Bejelentkezés",

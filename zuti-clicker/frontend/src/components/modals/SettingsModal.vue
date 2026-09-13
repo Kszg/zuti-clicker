@@ -1,31 +1,77 @@
 <script setup lang="ts">
+import { ref, watch, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
-import { useSettingsStore } from "@/stores/settingsStore";
+import { useSettingsStore, type SettingsSnapshot } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useToastStore } from "@/stores/toastStore";
 import { AUTOSAVE_INTERVAL_OPTIONS } from "@/utils/gameConstants";
 import { THEMES, LANGUAGES, CEREMONIES } from "@/utils/settingsSchema";
 
 const { t } = useI18n();
 const settings = useSettingsStore();
 const ui = useUiStore();
+const toast = useToastStore();
 
-const intervalLabels: Record<(typeof AUTOSAVE_INTERVAL_OPTIONS)[number], string> = {
-  15: "15s",
-  30: "30s",
-  60: "1m",
-  300: "5m"
-};
+function intervalKey(opt: (typeof AUTOSAVE_INTERVAL_OPTIONS)[number]) {
+  return `settings.intervals.${opt}` as Parameters<typeof t>[0];
+}
+
+// Live preview stays (theme/language apply as you click), but a change is
+// only committed to the server on "Done" — Cancel/Esc restores whatever was
+// in effect when the modal opened.
+const openSnapshot = ref<SettingsSnapshot | null>(null);
+const saving = ref(false);
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") handleCancel();
+}
+
+watch(
+  () => ui.settingsModalOpen,
+  (open) => {
+    if (open) {
+      openSnapshot.value = settings.snapshot();
+      window.addEventListener("keydown", onKeydown);
+    } else {
+      window.removeEventListener("keydown", onKeydown);
+    }
+  }
+);
+
+onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 function close() {
   ui.settingsModalOpen = false;
+}
+
+function handleCancel() {
+  if (openSnapshot.value) settings.restore(openSnapshot.value);
+  close();
+}
+
+async function handleDone() {
+  saving.value = true;
+  try {
+    const result = await settings.flushPush();
+    if (result.local) {
+      toast.push("success", t("settings.savedLocal"));
+    } else if (result.ok) {
+      toast.push("success", t("settings.saved"));
+    } else {
+      toast.push("error", t("settings.saveFailed"));
+    }
+  } finally {
+    saving.value = false;
+    close();
+  }
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="ui.settingsModalOpen" class="modal-backdrop" @click.self="close">
-      <div class="modal" role="dialog" aria-modal="true">
-        <h2 class="modal-title">{{ t("settings.title") }}</h2>
+    <div v-if="ui.settingsModalOpen" class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+        <h2 id="settings-modal-title" class="modal-title">{{ t("settings.title") }}</h2>
 
         <div class="section">
           <span class="section-label">{{ t("settings.appearance") }}</span>
@@ -38,6 +84,7 @@ function close() {
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.theme === opt }"
+                :aria-pressed="settings.theme === opt"
                 @click="settings.theme = opt"
               >
                 {{ opt === "dark" ? t("settings.themeDark") : t("settings.themeLight") }}
@@ -53,6 +100,7 @@ function close() {
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.language === opt }"
+                :aria-pressed="settings.language === opt"
                 @click="settings.setLanguage(opt)"
               >
                 {{ opt.toUpperCase() }}
@@ -72,6 +120,7 @@ function close() {
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.prestigeCeremony === opt }"
+                :aria-pressed="settings.prestigeCeremony === opt"
                 @click="settings.setPrestigeCeremony(opt)"
               >
                 {{ opt === "full" ? t("settings.ceremonyFull") : t("settings.ceremonyBrief") }}
@@ -88,6 +137,7 @@ function close() {
             <button
               class="toggle-btn"
               :class="{ active: settings.autosaveEnabled }"
+              :aria-pressed="settings.autosaveEnabled"
               @click="settings.autosaveEnabled = !settings.autosaveEnabled"
             >
               {{ settings.autosaveEnabled ? "✓" : "✗" }}
@@ -102,16 +152,22 @@ function close() {
                 :key="opt"
                 class="seg-btn"
                 :class="{ active: settings.autosaveIntervalSecs === opt }"
+                :aria-pressed="settings.autosaveIntervalSecs === opt"
                 @click="settings.autosaveIntervalSecs = opt"
               >
-                {{ intervalLabels[opt] }}
+                {{ t(intervalKey(opt)) }}
               </button>
             </div>
           </div>
         </div>
 
         <div class="modal-actions">
-          <button class="btn-close" @click="close">{{ t("settings.closeBtn") }}</button>
+          <button class="btn-cancel" :disabled="saving" @click="handleCancel">
+            {{ t("settings.cancelBtn") }}
+          </button>
+          <button class="btn-close" :disabled="saving" @click="handleDone">
+            {{ t("settings.closeBtn") }}
+          </button>
         </div>
       </div>
     </div>
@@ -126,6 +182,7 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
   z-index: 1000;
   animation: fadeIn 180ms ease;
 }
@@ -137,6 +194,8 @@ function close() {
   padding: 28px 32px 24px;
   width: 100%;
   max-width: 420px;
+  max-height: 100%;
+  overflow-y: auto;
   animation: fadeScaleIn 200ms ease;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
@@ -223,10 +282,11 @@ function close() {
 
 .modal-actions {
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
 }
 
-.btn-close {
+.btn-cancel {
   padding: 8px 20px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -236,8 +296,19 @@ function close() {
   font-weight: 600;
   transition: all var(--transition-fast);
 }
-.btn-close:hover {
-  border-color: var(--accent);
-  color: var(--text-primary);
+.btn-cancel:hover:not(:disabled) { border-color: var(--accent); color: var(--text-primary); }
+.btn-cancel:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-close {
+  padding: 8px 20px;
+  background: var(--btn-buy-bg);
+  border: 1px solid var(--btn-buy-bg);
+  color: var(--btn-buy-text);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all var(--transition-fast);
 }
+.btn-close:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-close:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

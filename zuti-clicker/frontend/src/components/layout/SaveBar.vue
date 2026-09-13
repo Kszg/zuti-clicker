@@ -138,8 +138,8 @@ async function logout() {
 .save-guest-btn { border-color: var(--accent); color: var(--accent-text); }
 .save-guest-btn:hover { background: var(--accent); color: #fff; }
 
-.sync-btn.synced { border-color: #22c55e; color: #22c55e; }
-.sync-btn.sync-error { border-color: #f87171; color: #f87171; }
+.sync-btn.synced { border-color: var(--success); color: var(--success); }
+.sync-btn.sync-error { border-color: var(--danger); color: var(--danger); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .sync-icon.spinning { display: inline-block; animation: spin 0.7s linear infinite; }
@@ -175,6 +175,6 @@ async function logout() {
   transition: all var(--transition-fast);
 }
 .dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-.dropdown-item.danger { color: #f87171; }
+.dropdown-item.danger { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(248, 113, 113, 0.08); }
 </style>

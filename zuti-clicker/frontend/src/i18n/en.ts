@@ -63,7 +63,17 @@ export default {
     saving: "Saving",
     autosave: "Autosave",
     autosaveInterval: "Interval",
-    closeBtn: "Done"
+    intervals: {
+      "15": "15s",
+      "30": "30s",
+      "60": "1m",
+      "300": "5m"
+    },
+    cancelBtn: "Cancel",
+    closeBtn: "Done",
+    saved: "Settings saved",
+    savedLocal: "Settings saved on this device",
+    saveFailed: "Couldn't save settings — they're saved on this device"
   },
   auth: {
     loginTab: "Log in",

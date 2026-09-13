@@ -213,4 +213,83 @@ describe("settingsStore", () => {
       expect(api.settings.store).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("snapshot/restore (settings modal Cancel)", () => {
+    it("restore() reverts every field back to the snapshot", () => {
+      const settings = useSettingsStore();
+      const snap = settings.snapshot();
+
+      settings.toggleTheme();
+      settings.setLanguage("hu");
+      settings.setPrestigeCeremony("brief");
+      settings.autosaveEnabled = false;
+      settings.autosaveIntervalSecs = 300;
+
+      settings.restore(snap);
+
+      expect(settings.theme).toBe(snap.theme);
+      expect(settings.language).toBe(snap.language);
+      expect(settings.prestigeCeremony).toBe(snap.prestigeCeremony);
+      expect(settings.autosaveEnabled).toBe(snap.autosaveEnabled);
+      expect(settings.autosaveIntervalSecs).toBe(snap.autosaveIntervalSecs);
+    });
+
+    it("restore() also corrects a stray push that already fired for the abandoned change", async () => {
+      loginAs();
+      vi.useFakeTimers();
+      const settings = useSettingsStore();
+      const snap = settings.snapshot();
+
+      settings.setLanguage("hu");
+      await vi.runAllTimersAsync(); // the stray push for "hu" lands
+
+      settings.restore(snap);
+      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+
+      expect(api.settings.store).toHaveBeenLastCalledWith(
+        expect.objectContaining({ language: snap.language })
+      );
+    });
+  });
+
+  describe("flushPush (settings modal Done)", () => {
+    it("resolves { ok: true, local: true } for a guest without calling the API", async () => {
+      const settings = useSettingsStore();
+      const result = await settings.flushPush();
+      expect(result).toEqual({ ok: true, local: true });
+      expect(api.settings.store).not.toHaveBeenCalled();
+    });
+
+    it("awaits the API and resolves { ok: true, local: false } when it succeeds", async () => {
+      loginAs();
+      const settings = useSettingsStore();
+      const result = await settings.flushPush();
+      expect(result).toEqual({ ok: true, local: false });
+      expect(api.settings.store).toHaveBeenCalledTimes(1);
+    });
+
+    it("resolves { ok: false, local: false } when the API rejects", async () => {
+      loginAs();
+      vi.mocked(api.settings.store).mockRejectedValueOnce(new Error("network down"));
+      const settings = useSettingsStore();
+      const result = await settings.flushPush();
+      expect(result).toEqual({ ok: false, local: false });
+    });
+
+    it("cancels any pending debounced push instead of double-sending", async () => {
+      loginAs();
+      vi.useFakeTimers();
+      const settings = useSettingsStore();
+
+      settings.setLanguage("hu");
+      await vi.advanceTimersByTimeAsync(0); // let the persistence watcher schedule its debounce
+      await settings.flushPush(); // flushes immediately instead, cancelling that timer
+
+      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+
+      expect(api.settings.store).toHaveBeenCalledTimes(1);
+    });
+  });
 });
