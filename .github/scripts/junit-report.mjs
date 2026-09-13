@@ -9,20 +9,26 @@
  * HTML/ODS reporter dependency.
  *
  * Usage:
- *   node junit-report.mjs --input <dir> --out <dir>
+ *   node junit-report.mjs --input <dir> --out <dir> [--suffix <value>]
  *
- * --input is scanned recursively for *.xml files. Each file's immediate
- * parent directory name is used as the stage label, with a leading
- * "junit-" stripped (this matches how ci.yml names the uploaded artifacts:
- * junit-typecheck/junit.xml, junit-frontend-tests/junit.xml,
- * junit-api-tests/junit.xml -> stages "typecheck", "frontend-tests",
- * "api-tests").
+ * --input is scanned recursively for *.xml files. Each file's own basename
+ * is used as the stage label when it looks like junit-<stage>.xml (this
+ * matches how ci.yml names the uploaded artifacts: junit-typecheck.xml,
+ * junit-frontend-tests.xml, junit-api-tests.xml -> stages "typecheck",
+ * "frontend-tests", "api-tests"); falling back to the parent directory name
+ * for any other layout (e.g. a zipped multi-file artifact extracted into
+ * its own subdirectory).
+ *
+ * --suffix, when given, is appended (as -<suffix>) to every output
+ * filename - ci.yml passes the run number, so repeated downloads across
+ * different runs never collide on a filesystem.
  *
  * Writes, into --out:
- *   report.html   - self-contained styled report, per-stage sections
- *   report.ods    - real OpenDocument spreadsheet (Summary + Tests sheets)
- *   summary.json  - { stages: [...], totals: {...} } for other steps to reuse
- *   summary.md    - markdown table, ready to paste into a step summary or PR comment
+ *   report[-suffix].html   - self-contained styled report, per-stage sections
+ *   report[-suffix].ods    - real OpenDocument spreadsheet: a Summary sheet
+ *                            plus one sheet per stage with its own test cases
+ *   summary[-suffix].json  - { stages: [...], totals: {...} } for other steps to reuse
+ *   summary[-suffix].md    - markdown table, ready to paste into a step summary or PR comment
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
@@ -30,13 +36,14 @@ import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
 
 function parseArgs(argv) {
-  const args = { input: null, out: null };
+  const args = { input: null, out: null, suffix: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--input") args.input = argv[++i];
     else if (argv[i] === "--out") args.out = argv[++i];
+    else if (argv[i] === "--suffix") args.suffix = argv[++i];
   }
   if (!args.input || !args.out) {
-    console.error("Usage: node junit-report.mjs --input <dir> --out <dir>");
+    console.error("Usage: node junit-report.mjs --input <dir> --out <dir> [--suffix <value>]");
     process.exit(1);
   }
   return args;
@@ -285,6 +292,23 @@ function odsRow(cells) {
   return `<table:table-row>${cells.join("")}</table:table-row>`;
 }
 
+// ODF (and Excel) sheet names can't contain \ / ? * [ ] : , must be
+// non-empty, and are conventionally capped at 31 characters - stage names
+// come from this repo's own CI job names so collisions aren't expected in
+// practice, but sanitizing defensively costs nothing.
+function sanitizeSheetName(name, usedNames) {
+  let clean = String(name).replace(/[\\/?*[\]:]/g, "_").slice(0, 31) || "stage";
+  let candidate = clean;
+  let i = 2;
+  while (usedNames.has(candidate)) {
+    const marker = `_${i}`;
+    candidate = clean.slice(0, 31 - marker.length) + marker;
+    i++;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
 function buildContentXml(stages, totals) {
   const summaryHeader = odsRow(
     ["Stage", "Total", "Passed", "Failed", "Skipped", "Duration (s)"].map((h) => odsCell(h))
@@ -310,23 +334,30 @@ function buildContentXml(stages, totals) {
     odsCell(totals.time.toFixed(2), "float")
   ]);
 
-  const testsHeader = odsRow(
-    ["Stage", "Class", "Test", "Status", "Duration (s)", "Failure message"].map((h) => odsCell(h))
-  );
-  const testsRows = stages
-    .flatMap((s) =>
-      s.cases.map((c) =>
-        odsRow([
-          odsCell(s.stage),
-          odsCell(c.classname),
-          odsCell(c.name),
-          odsCell(c.status),
-          odsCell(c.time.toFixed(3), "float"),
-          odsCell(c.failureMessage ?? "")
-        ])
-      )
-    )
-    .join("");
+  // One sheet per stage (rather than one combined "Tests" sheet with a
+  // Stage column) so api/frontend/typecheck results can each be opened,
+  // filtered and read on their own.
+  const usedSheetNames = new Set(["Summary"]);
+  const stageSheets = stages
+    .map((s) => {
+      const sheetName = sanitizeSheetName(s.stage, usedSheetNames);
+      const header = odsRow(
+        ["Class", "Test", "Status", "Duration (s)", "Failure message"].map((h) => odsCell(h))
+      );
+      const rows = s.cases
+        .map((c) =>
+          odsRow([
+            odsCell(c.classname),
+            odsCell(c.name),
+            odsCell(c.status),
+            odsCell(c.time.toFixed(3), "float"),
+            odsCell(c.failureMessage ?? "")
+          ])
+        )
+        .join("");
+      return `<table:table table:name="${escapeHtml(sheetName)}">${header}${rows}</table:table>`;
+    })
+    .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
@@ -340,10 +371,7 @@ function buildContentXml(stages, totals) {
         ${summaryRows}
         ${summaryTotal}
       </table:table>
-      <table:table table:name="Tests">
-        ${testsHeader}
-        ${testsRows}
-      </table:table>
+      ${stageSheets}
     </office:spreadsheet>
   </office:body>
 </office:document-content>`;
@@ -392,7 +420,8 @@ function buildMarkdown(stages, totals) {
 }
 
 async function main() {
-  const { input, out } = parseArgs(process.argv.slice(2));
+  const { input, out, suffix } = parseArgs(process.argv.slice(2));
+  const tag = suffix ? `-${suffix}` : "";
   mkdirSync(out, { recursive: true });
 
   const xmlFiles = findXmlFiles(input);
@@ -414,13 +443,13 @@ async function main() {
     { tests: 0, failures: 0, skipped: 0, time: 0 }
   );
 
-  writeFileSync(join(out, "report.html"), buildHtml(stages, totals));
-  writeFileSync(join(out, "report.ods"), await buildOds(stages, totals));
+  writeFileSync(join(out, `report${tag}.html`), buildHtml(stages, totals));
+  writeFileSync(join(out, `report${tag}.ods`), await buildOds(stages, totals));
   writeFileSync(
-    join(out, "summary.json"),
+    join(out, `summary${tag}.json`),
     JSON.stringify({ stages, totals, generatedAt: new Date().toISOString() }, null, 2)
   );
-  writeFileSync(join(out, "summary.md"), buildMarkdown(stages, totals));
+  writeFileSync(join(out, `summary${tag}.md`), buildMarkdown(stages, totals));
 
   console.log(`Processed ${xmlFiles.length} JUnit file(s) across ${stages.length} stage(s).`);
   console.log(`Total: ${totals.tests} tests, ${totals.failures} failed, ${totals.skipped} skipped.`);
