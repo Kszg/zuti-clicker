@@ -240,16 +240,22 @@ jobs:
                 artifact_id: artifact.id,
                 archive_format: "zip"
               });
-              // Verified empirically (fetched a direct/unzipped artifact's
-              // raw bytes and ran `file` on them): despite the endpoint
-              // name, archive: false uploads come back completely
-              // unwrapped - report.ods's own bytes ARE the file, not a zip
-              // containing it. Unzipping unconditionally would "succeed" on
-              // report.ods specifically (it's an OpenDocument file, which is
-              // itself a valid zip container) and explode it into its
-              // internal content.xml/styles.xml instead of preserving it,
-              // so just write the downloaded bytes out directly.
-              fs.writeFileSync(`release-assets/test-reports/${artifact.name}`, Buffer.from(download.data));
+              // download.data's shape isn't reliable across Octokit/runtime
+              // versions (confirmed live: this threw "Received an instance
+              // of Object" in actions/github-script@v9's bundled Octokit,
+              // even though download.data is a real ArrayBuffer against the
+              // latest @octokit/rest standalone) - download.url (the actual
+              // signed blob-storage redirect target) is present either way,
+              // so fetch that directly instead of trusting download.data.
+              //
+              // Separately, verified empirically that despite the endpoint
+              // name, archive: false uploads come back completely unwrapped
+              // - report.ods's own bytes ARE the file, not a zip containing
+              // it - so no unzip step is needed, just write the bytes out.
+              const res = await fetch(download.url);
+              if (!res.ok) throw new Error(`Failed to download artifact ${artifact.name}: ${res.status} ${res.statusText}`);
+              const buffer = Buffer.from(await res.arrayBuffer());
+              fs.writeFileSync(`release-assets/test-reports/${artifact.name}`, buffer);
             }
 
             const summaryFile = reportArtifacts.find((a) => a.name.startsWith("summary-") && a.name.endsWith(".md"));
