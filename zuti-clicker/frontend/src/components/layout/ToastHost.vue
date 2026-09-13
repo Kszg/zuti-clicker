@@ -102,8 +102,8 @@ const toast = useToastStore();
     left: 16px;
     right: 16px;
     justify-content: center;
-    bottom: 76px;
-    bottom: max(76px, calc(env(safe-area-inset-bottom) + 68px));
+    bottom: calc(var(--mobile-tabbar-h) + 16px);
+    bottom: calc(var(--mobile-tabbar-h) + 16px + env(safe-area-inset-bottom));
   }
   .toast-item {
     max-width: 100%;

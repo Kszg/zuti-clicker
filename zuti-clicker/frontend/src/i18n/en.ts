@@ -18,6 +18,11 @@ export default {
     hint: "Click to earn tokens!",
     ariaLabel: "Click Dr. Zuti Pál's portrait to earn tokens"
   },
+  nav: {
+    title: "Panels",
+    stats: "Stats",
+    shop: "Shop"
+  },
   units: {
     title: "Units",
     owned: "owned",

@@ -18,6 +18,11 @@ export default {
     hint: "Kattints a tokenekért!",
     ariaLabel: "Kattints Dr. Zuti Pál portréjára tokenekért"
   },
+  nav: {
+    title: "Panelek",
+    stats: "Statisztika",
+    shop: "Bolt"
+  },
   units: {
     title: "Egységek",
     owned: "db",
