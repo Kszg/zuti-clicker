@@ -105,7 +105,7 @@ jobs:
             fe_failure="<failure message=\"vue-tsc --build exited with code ${fe_status}\">See the Typecheck frontend step log</failure>"
           fi
           total_time=$((api_dur + fe_dur))
-          cat > reports/junit.xml <<XML
+          cat > reports/junit-typecheck.xml <<XML
           <?xml version="1.0" encoding="UTF-8"?>
           <testsuites name="typecheck" tests="2" failures="${failures}" time="${total_time}">
             <testsuite name="typecheck" tests="2" failures="${failures}" time="${total_time}">
@@ -114,14 +114,17 @@ jobs:
             </testsuite>
           </testsuites>
           XML
-          cat reports/junit.xml
+          cat reports/junit-typecheck.xml
 
+      # Named junit-<stage>.xml (not plain junit.xml) so it can upload
+      # unzipped (archive: false) with a name that won't collide with the
+      # other two stages' otherwise-identically-named files.
       - name: Upload JUnit report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: junit-typecheck
-          path: reports/junit.xml
+          path: reports/junit-typecheck.xml
+          archive: false
           retention-days: 14
           if-no-files-found: warn
 
@@ -157,14 +160,17 @@ jobs:
         working-directory: zuti-clicker/frontend
         run: >
           pnpm exec vitest run --reporter=default --reporter=junit
-          --outputFile.junit=reports/junit.xml
+          --outputFile.junit=reports/junit-frontend-tests.xml
 
+      # Named junit-<stage>.xml (not plain junit.xml) so it can upload
+      # unzipped (archive: false) with a name that won't collide with the
+      # other two stages' otherwise-identically-named files.
       - name: Upload JUnit report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: junit-frontend-tests
-          path: zuti-clicker/frontend/reports/junit.xml
+          path: zuti-clicker/frontend/reports/junit-frontend-tests.xml
+          archive: false
           retention-days: 14
           if-no-files-found: warn
 
@@ -275,7 +281,7 @@ jobs:
         working-directory: zuti-clicker/api
         env:
           JEST_JUNIT_OUTPUT_DIR: reports
-          JEST_JUNIT_OUTPUT_NAME: junit.xml
+          JEST_JUNIT_OUTPUT_NAME: junit-api-tests.xml
         run: >
           node --experimental-vm-modules node_modules/jest/bin/jest.js
           --config=jest.config.cjs --reporters=default --reporters=jest-junit
@@ -303,12 +309,15 @@ jobs:
         working-directory: zuti-clicker/api
         run: pnpm cleanup:test-users --apply
 
+      # Named junit-<stage>.xml (not plain junit.xml) so it can upload
+      # unzipped (archive: false) with a name that won't collide with the
+      # other two stages' otherwise-identically-named files.
       - name: Upload JUnit report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: junit-api-tests
-          path: zuti-clicker/api/reports/junit.xml
+          path: zuti-clicker/api/reports/junit-api-tests.xml
+          archive: false
           retention-days: 14
           if-no-files-found: warn
 
