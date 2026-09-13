@@ -215,6 +215,12 @@ jobs:
           while IFS='=' read -r key value; do
             [ -z "$key" ] && continue
             case "$key" in \#*) continue ;; esac
+            # GitHub Actions prints every step's full resolved env dict in
+            # the log, and $GITHUB_ENV values are NOT auto-masked the way
+            # secrets.* are - explicitly mask before export or every value
+            # from this file (DB password included) leaks in plain text on
+            # every later step, in this public repo's Actions log.
+            echo "::add-mask::$value"
             {
               echo "${key}<<CI_ENV_VALUE_EOF"
               echo "$value"
