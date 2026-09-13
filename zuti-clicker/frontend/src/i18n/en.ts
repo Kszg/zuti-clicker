@@ -1,5 +1,5 @@
 export default {
-  app: { title: "Zuti Clicker" },
+  app: { title: "Zuti Clicker", titleCompact: "Zuti" },
   status: {
     title: "Progress",
     tokens: "Tokens",
@@ -14,7 +14,15 @@ export default {
     runClicks: "Run Clicks",
     runTime: "Run Time"
   },
-  clicker: { hint: "Click to earn tokens!" },
+  clicker: {
+    hint: "Click to earn tokens!",
+    ariaLabel: "Click Dr. Zuti Pál's portrait to earn tokens"
+  },
+  nav: {
+    title: "Panels",
+    stats: "Stats",
+    shop: "Shop"
+  },
   units: {
     title: "Units",
     owned: "owned",
@@ -23,6 +31,7 @@ export default {
     tooltipCost: "Cost",
     tooltipGain: "Income gain",
     tooltipEach: "Each unit",
+    moreInfo: "More info",
     names: {
       alpha: "Alpha",
       beta: "Beta",
@@ -60,9 +69,20 @@ export default {
     saving: "Saving",
     autosave: "Autosave",
     autosaveInterval: "Interval",
-    closeBtn: "Done"
+    intervals: {
+      "15": "15s",
+      "30": "30s",
+      "60": "1m",
+      "300": "5m"
+    },
+    cancelBtn: "Cancel",
+    closeBtn: "Done",
+    saved: "Settings saved",
+    savedLocal: "Settings saved on this device",
+    saveFailed: "Couldn't save settings — they're saved on this device"
   },
   auth: {
+    modalAriaLabel: "Log in or create an account",
     loginTab: "Log in",
     registerTab: "Register",
     emailLabel: "Email",

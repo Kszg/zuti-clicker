@@ -157,14 +157,41 @@ A `PUT /save` öt prestige-mezője (`phdCount`, `prestigeCount`, `runTokensEarne
 App.vue
   ├── useGameLoop()          → gameStore.tick() 20x/s
   ├── usePrestige()          → gameStore.prestige() -> ceremónia/szinkron
+  ├── useBreakpoint()        → isCompact (matchMedia, < 760px)
   ├── authStore              → session check, login/register/logout
   ├── settingsStore          → téma, nyelv, autosave, ceremónia — localStorage + szerver szinkron
   ├── saveStore               → load/sync/reset (autosave-időzítő a settingsStore-ból olvas)
-  ├── uiStore                → modál állapotok
+  ├── uiStore                → modál állapotok, mobilePanel ("none" | "stats" | "units")
+  ├── toastStore             → átmeneti értesítések (pl. beállítások mentése)
   └── gameStore              → tokenek, egységek, statisztikák, prestige állapot
 ```
 
 A `saveStore` a `authStore`-tól és a `settingsStore`-tól függ: az autosave-időzítő automatikusan elindul/leáll, amikor `isLoggedIn`, `autosaveEnabled` vagy `autosaveIntervalSecs` megváltozik. A `settingsStore` sosem importálja a `saveStore`-t (a függőségi irány mindig `settings → save`, nem fordítva), hogy elkerülje a körkörös importot.
+
+### Reszponzív töréspontok
+
+Nincs mobil-first felépítés — a `frontend/src/App.vue`, `AppHeader.vue`,
+`SaveBar.vue`, `MultiplierSelector.vue`, `UnitCard.vue` és `ToastHost.vue`
+saját `@media` szabályai a meglévő asztali elrendezésre épülnek rá:
+
+| Szélesség | Elrendezés |
+|---|---|
+| `>= 1120px` | Az eredeti, fix szélességű háromoszlopos rács. |
+| `760px – 1119px` | Ugyanaz a három oszlop, de a két oldalpanel `clamp()`-pel keskenyedik. |
+| `< 760px` | A Kattintó tölti ki a teljes szélességet; a két oldalpanel (`StatusColumn`, `UnitsPanel`) `.rail` osztályt kap az `App.vue`-tól, és `position: fixed` + `transform` segítségével alulról felcsúszó lapként jelenik meg. Az `uiStore.mobilePanel` mező (`"none" | "stats" | "units"`) tárolja, melyik lap van nyitva; ezt olvassa az új `MobileTabBar.vue` (a lenti fülsáv), a lapok maguk, és a köztük lévő elhalványuló háttér (`.mobile-scrim`). |
+
+A két panelkomponens (`StatusColumn`, `UnitsPanel`) egyetlen példányban létezik
+minden szélességnél — a mobil nézet nem szerel le és épít újra semmit, csak
+CSS-sel repozicionálja őket. Ez azért működik, mert egy komponens gyökérelemére
+adott extra `class`/`id` (lásd `App.vue`: `<StatusColumn class="rail rail-stats" />`)
+a Vue "fallthrough attribútum" mechanizmusa miatt a szülő saját `scoped` CSS
+hash-ét is megkapja a gyermek gyökerén — ezt a viselkedést a tényleges
+lefordított kimeneten ellenőriztük, mielőtt erre építettünk volna.
+
+A `frontend/src/composables/useBreakpoint.ts` egy `matchMedia`-alapú
+összetevő, ami `isCompact`-ot ad vissza; ez csak arra kell, amit CSS önmagában
+nem tud megoldani — pl. hogy egy nyitva hagyott mobil panel automatikusan
+bezáródjon, ha az ablak visszaszélesedik 760px fölé.
 
 ---
 
@@ -255,4 +282,5 @@ IMAGE_TAG=sha-<korábbi_rövid_sha> docker compose -f docker-compose.prod.yml up
 - A Prisma client a `generated/prisma/` mappában van, nem a szokásos `node_modules/@prisma/client` helyen. A `pnpm prisma generate` futtatása után commitolni kell a generált fájlokat is.
 - A `CORS_ORIGIN_URLS` environment változó nincs beállítva a `.env`-ben; fejlesztési módban a Vite proxy kezeli a cross-origin kéréseket, így CORS konfiguráció nem szükséges.
 - A session tokenek az `Authentication.sessionToken` mezőben tárolódnak. Kijelentkezéskor ez üres stringre áll vissza, nem törlődik a rekord.
+- Új modálablakot a `frontend/src/components/modals/BaseModal.vue` közös héjára építve érdemes létrehozni (Esc, fókuszcsapda, fókusz-visszaállítás, `aria-labelledby`, testreszabható `dismiss-on-backdrop`/`max-width`/`z-index`) — ne másold újra a Teleport/backdrop mintát, amit ez váltott fel.
 ```

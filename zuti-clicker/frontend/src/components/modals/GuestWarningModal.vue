@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/authStore";
 import { useUiStore } from "@/stores/uiStore";
+import BaseModal from "./BaseModal.vue";
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -23,53 +24,29 @@ function dismiss() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="visible" class="modal-backdrop">
-      <div class="modal" role="alertdialog" aria-modal="true">
-        <div class="modal-icon">💾</div>
-        <h2 class="modal-title">{{ t("guest.warningTitle") }}</h2>
-        <p class="modal-body">{{ t("guest.warningBody") }}</p>
-        <div class="modal-actions">
-          <button class="btn-primary" @click="openAuth">{{ t("guest.loginBtn") }}</button>
-          <button class="btn-ghost" @click="dismiss">{{ t("guest.continueBtn") }}</button>
-        </div>
+  <BaseModal
+    :open="visible"
+    role="alertdialog"
+    :title="t('guest.warningTitle')"
+    :max-width="400"
+    :z-index="900"
+    :dismiss-on-backdrop="false"
+    center-content
+    @close="dismiss"
+  >
+    <div class="modal-icon">💾</div>
+    <p class="modal-body">{{ t("guest.warningBody") }}</p>
+    <template #actions>
+      <div class="modal-actions">
+        <button class="btn-primary" @click="openAuth">{{ t("guest.loginBtn") }}</button>
+        <button class="btn-ghost" @click="dismiss">{{ t("guest.continueBtn") }}</button>
       </div>
-    </div>
-  </Teleport>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 900;
-  animation: fadeIn 220ms ease;
-}
-
-.modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 36px 32px 28px;
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  animation: fadeScaleIn 240ms ease;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
 .modal-icon { font-size: 40px; margin-bottom: 14px; line-height: 1; }
-
-.modal-title {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-}
 
 .modal-body {
   font-size: 13px;

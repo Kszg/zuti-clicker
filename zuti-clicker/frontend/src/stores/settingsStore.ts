@@ -9,6 +9,19 @@ import type { Theme, Language, PrestigeCeremony } from "@/types";
 const STORAGE_KEY = "zuti-clicker:settings";
 const PUSH_DEBOUNCE_MS = 800;
 
+export interface SettingsSnapshot {
+  theme: Theme;
+  language: Language;
+  autosaveEnabled: boolean;
+  autosaveIntervalSecs: number;
+  prestigeCeremony: PrestigeCeremony;
+}
+
+export type FlushPushResult =
+  | { ok: true; local: true } // guest: only localStorage was written
+  | { ok: true; local: false } // logged in, server accepted the write
+  | { ok: false; local: false }; // logged in, server push failed
+
 function readStoredSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -46,6 +59,53 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function setPrestigeCeremony(mode: PrestigeCeremony) {
     prestigeCeremony.value = mode;
+  }
+
+  // Cancel/Esc support for the settings modal's live-preview model: snapshot
+  // on open, restore() on cancel. restore() intentionally does NOT set
+  // `_applying` — it goes through the normal persistence watcher below, so a
+  // cancel also corrects any stray debounced push that already fired for a
+  // previewed-then-abandoned change.
+  function snapshot(): SettingsSnapshot {
+    return {
+      theme: theme.value,
+      language: language.value,
+      autosaveEnabled: autosaveEnabled.value,
+      autosaveIntervalSecs: autosaveIntervalSecs.value,
+      prestigeCeremony: prestigeCeremony.value
+    };
+  }
+
+  function restore(snap: SettingsSnapshot) {
+    theme.value = snap.theme;
+    language.value = snap.language;
+    autosaveEnabled.value = snap.autosaveEnabled;
+    autosaveIntervalSecs.value = snap.autosaveIntervalSecs;
+    prestigeCeremony.value = snap.prestigeCeremony;
+  }
+
+  // Used by the settings modal's "Done" button: unlike the normal debounced
+  // push (fire-and-forget, errors swallowed — fine for an incidental change
+  // like the header's theme toggle), Done needs to know whether the save
+  // actually landed so it can report it.
+  async function flushPush(): Promise<FlushPushResult> {
+    if (_pushTimer) {
+      clearTimeout(_pushTimer);
+      _pushTimer = null;
+    }
+    if (!auth.isLoggedIn) return { ok: true, local: true };
+    try {
+      await api.settings.store({
+        theme: theme.value,
+        language: language.value,
+        autosaveEnabled: autosaveEnabled.value,
+        autosaveIntervalSecs: autosaveIntervalSecs.value,
+        prestigeCeremony: prestigeCeremony.value
+      });
+      return { ok: true, local: false };
+    } catch {
+      return { ok: false, local: false };
+    }
   }
 
   function _writeLocalStorage() {
@@ -87,6 +147,7 @@ export const useSettingsStore = defineStore("settings", () => {
   watch(theme, (t) => document.documentElement.setAttribute("data-theme", t), { immediate: true });
   watch(language, (l) => {
     i18n.global.locale.value = l;
+    document.documentElement.lang = l; // was left at index.html's empty default
   }, { immediate: true });
 
   // A pending debounced push must not survive a logout: on a shared browser,
@@ -155,6 +216,9 @@ export const useSettingsStore = defineStore("settings", () => {
     toggleTheme,
     setLanguage,
     setPrestigeCeremony,
+    snapshot,
+    restore,
+    flushPush,
     loadFromServer
   };
 });

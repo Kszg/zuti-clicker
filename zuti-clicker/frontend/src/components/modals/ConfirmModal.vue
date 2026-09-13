@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BaseModal from "./BaseModal.vue";
+
 defineProps<{
   title: string;
   body: string;
@@ -13,50 +15,25 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="modal-backdrop" @click.self="emit('cancel')">
-      <div class="modal" role="alertdialog" aria-modal="true">
-        <h2 class="modal-title">{{ title }}</h2>
-        <p class="modal-body">{{ body }}</p>
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="emit('cancel')">{{ cancelLabel }}</button>
-          <button class="btn-confirm" @click="emit('confirm')">{{ confirmLabel }}</button>
-        </div>
+  <BaseModal
+    :open="true"
+    role="alertdialog"
+    :title="title"
+    :max-width="360"
+    :z-index="1100"
+    @close="emit('cancel')"
+  >
+    <p class="modal-body">{{ body }}</p>
+    <template #actions>
+      <div class="modal-actions">
+        <button class="btn-cancel" @click="emit('cancel')">{{ cancelLabel }}</button>
+        <button class="btn-confirm" @click="emit('confirm')">{{ confirmLabel }}</button>
       </div>
-    </div>
-  </Teleport>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  animation: fadeIn 180ms ease;
-}
-
-.modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 28px 32px 24px;
-  width: 100%;
-  max-width: 360px;
-  animation: fadeScaleIn 200ms ease;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-.modal-title {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-}
-
 .modal-body {
   font-size: 13px;
   color: var(--text-secondary);

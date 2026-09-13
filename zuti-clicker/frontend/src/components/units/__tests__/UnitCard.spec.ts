@@ -1,12 +1,18 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
-import { mount } from "@vue/test-utils";
+import { mount, DOMWrapper } from "@vue/test-utils";
 import UnitCard from "@/components/units/UnitCard.vue";
 import { useGameStore } from "@/stores/gameStore";
+
+const body = () => new DOMWrapper(document.body);
 
 describe("UnitCard", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
   });
 
   it("alpha is always rendered", () => {
@@ -38,5 +44,75 @@ describe("UnitCard", () => {
     game.phdCount = 100; // 50% off
     const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
     expect(wrapper.find(".btn-cost").text()).toBe("5");
+  });
+
+  describe("tooltip", () => {
+    it("is closed until hovered or the info button is focused", () => {
+      mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("opens on hovering the info button (pointer) and closes on mouseleave", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("mouseenter");
+      expect(body().find(".tooltip").exists()).toBe(true);
+
+      await wrapper.find(".info-btn").trigger("mouseleave");
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("regression: hovering elsewhere on the card does not open it — only the info button does", async () => {
+      // The icon is what visually signals "hover/tap here for more"; having
+      // the whole row react to hover regardless made the icon look like
+      // decoration, since the tooltip was already open by the time you
+      // noticed it.
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".unit-card").trigger("mouseenter");
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("regression: opens on focusing the info button, reaching it without a pointer", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("focus");
+      expect(body().find(".tooltip").exists()).toBe(true);
+
+      await wrapper.find(".info-btn").trigger("blur");
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("is teleported to <body>, escaping any ancestor's overflow/transform clipping", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("focus");
+      expect(wrapper.find(".tooltip").exists()).toBe(false); // not inside the component's own tree
+      expect(body().find(".tooltip").exists()).toBe(true);
+    });
+
+    it("shows the unit's name, description, cost, and gain", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("focus");
+      const tip = body().find(".tooltip");
+      expect(tip.text()).toContain("Alpha");
+      expect(tip.text()).toContain("A basic token generator.");
+    });
+
+    it("closes on scroll rather than going stale at a scrolled-past position", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("focus");
+      expect(body().find(".tooltip").exists()).toBe(true);
+
+      window.dispatchEvent(new Event("scroll"));
+      await wrapper.vm.$nextTick();
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("closes on window resize", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("mouseenter");
+      expect(body().find(".tooltip").exists()).toBe(true);
+
+      window.dispatchEvent(new Event("resize"));
+      await wrapper.vm.$nextTick();
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
   });
 });

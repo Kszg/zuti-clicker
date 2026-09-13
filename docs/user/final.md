@@ -55,6 +55,15 @@ Az alkalmazás három részre osztja a képernyőt:
 └─────────────────┴───────────────────────────┴──────────────────┘
 ```
 
+Keskenyebb ablaknál (tablet méret alatt, kb. 1120px szélesség alatt) a két oldalpanel
+csak egy kicsit keskenyedik, hogy a Kattintónak több hely maradjon. Telefonon
+(kb. 760px szélesség alatt) a Kattintó tölti ki a teljes szélességet, a két
+oldalpanel pedig alulról felcsúszó lapként jelenik meg: a képernyő alján egy
+„Stats" / „Shop" fület tartalmazó sáv nyitja meg őket. Egy nyitott panel
+bezárható a saját fülére való újbóli koppintással, a panelen kívüli terület
+megérintésével, vagy az Esc billentyűvel. A tokenegyenleg és a másodpercenkénti
+termelés ilyenkor a fejlécben, kompakt formában marad látható.
+
 ---
 
 ## Státuszoszlop (bal oldal)
@@ -80,9 +89,14 @@ A „Total Earned", „Total Clicks", „Time Played" és „PhDs Earned" statis
 ## Kattintó (középen)
 
 A kép Dr. Zuti Pál portréját ábrázolja. Kattints rá a tokenek megszerzéséhez! Minden kattintásra:
-- A kör rövid animációt játszik le.
+- A kör rövid animációt játszik le, gyors, egymást követő kattintásoknál is minden egyes alkalommal.
 - Egy lebegő „+1" (vagy nagyobb, ha szorzókat vásároltál) szám jelenik meg a kattintás helyén, majd felfele úszik és eltűnik.
 - A token egyenleged azonnal növekszik.
+
+A bal és jobb egérgomb is számít kattintásnak — jobb gombbal kattintva nem
+nyílik meg a böngésző saját menüje, a kattintás ugyanúgy tokent ér. A kör
+billentyűzettel is elérhető (Tab), és Enter/Szóköz megnyomásával
+kattintható. A portré nem húzható ki a köréből.
 
 ---
 
@@ -166,9 +180,15 @@ A fejléc ⚙️ gombjára kattintva megnyílik a Beállítások ablak, három s
 
 - **Megjelenés**: Téma (Sötét/Világos), Nyelv (EN/HU).
 - **Játék**: Fokozatszerzés ünneplése — **Full ceremony** (teljes képernyős animáció) vagy **Brief** (csak a megerősítő ablak). Érdemes az első néhány fokozatszerzés után Brief-re váltani, ha az animáció helyett gyorsabban szeretnél tovább játszani.
-- **Mentés**: Automatikus mentés be/ki kapcsolása, és — ha be van kapcsolva — az időköz (15s / 30s / 1m / 5m).
+- **Mentés**: Automatikus mentés be/ki kapcsolása, és — ha be van kapcsolva — az időköz (15s / 30s / 1p / 5p).
 
-A „Done" (Kész) gombbal zárható be az ablak.
+A téma és a nyelv módosítása azonnal látszik, amíg az ablak nyitva van, de csak
+akkor kerül ténylegesen elmentésre, ha a **„Done" (Kész)** gombbal zárod be az
+ablakot — ekkor egy rövid értesítés (toast) jelzi, hogy a mentés sikerült-e
+(bejelentkezve a szerverre is, vendégként csak erre az eszközre). A **„Cancel"
+(Mégse)** gombbal, vagy az Esc billentyűvel az ablak úgy zárható be, hogy
+minden módosítás visszaáll arra, ami az ablak megnyitásakor érvényben volt — az
+ablakon kívülre kattintás nem zárja be az ablakot, csak ez a két gomb.
 
 ---
 

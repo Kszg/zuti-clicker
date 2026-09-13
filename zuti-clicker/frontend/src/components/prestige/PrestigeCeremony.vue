@@ -96,6 +96,12 @@ onUnmounted(() => {
   100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ceremonyPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+}
+
 .ceremony-content {
   position: relative;
   display: flex;

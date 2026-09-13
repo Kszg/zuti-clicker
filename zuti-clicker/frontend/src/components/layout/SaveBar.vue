@@ -61,9 +61,9 @@ async function logout() {
 <template>
   <!-- Guest state -->
   <div v-if="!auth.isLoggedIn" class="save-bar">
-    <button class="ctrl-btn save-guest-btn" @click="openAuthModal">
+    <button class="ctrl-btn save-guest-btn" :title="t('save.loginToSave')" @click="openAuthModal">
       <span>💾</span>
-      <span>{{ t("save.loginToSave") }}</span>
+      <span class="btn-label">{{ t("save.loginToSave") }}</span>
     </button>
   </div>
 
@@ -84,12 +84,16 @@ async function logout() {
       <span class="sync-icon" :class="{ spinning: save.isSyncing }">
         {{ save.isSyncing ? "⟳" : syncJustCompleted ? "✓" : "↑" }}
       </span>
-      <span>{{ save.isSyncing ? t("save.syncing") : t("save.sync") }}</span>
+      <span class="btn-label">{{ save.isSyncing ? t("save.syncing") : t("save.sync") }}</span>
     </button>
 
     <!-- User dropdown -->
     <div ref="userMenuRef" class="user-menu">
-      <button class="ctrl-btn user-btn" @click.stop="userMenuOpen = !userMenuOpen">
+      <button
+        class="ctrl-btn user-btn"
+        :title="auth.user?.username"
+        @click.stop="userMenuOpen = !userMenuOpen"
+      >
         <span>👤</span>
         <span class="username">{{ auth.user?.username }}</span>
         <span class="chevron">{{ userMenuOpen ? "▴" : "▾" }}</span>
@@ -138,8 +142,8 @@ async function logout() {
 .save-guest-btn { border-color: var(--accent); color: var(--accent-text); }
 .save-guest-btn:hover { background: var(--accent); color: #fff; }
 
-.sync-btn.synced { border-color: #22c55e; color: #22c55e; }
-.sync-btn.sync-error { border-color: #f87171; color: #f87171; }
+.sync-btn.synced { border-color: var(--success); color: var(--success); }
+.sync-btn.sync-error { border-color: var(--danger); color: var(--danger); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .sync-icon.spinning { display: inline-block; animation: spin 0.7s linear infinite; }
@@ -175,6 +179,21 @@ async function logout() {
   transition: all var(--transition-fast);
 }
 .dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-.dropdown-item.danger { color: #f87171; }
+.dropdown-item.danger { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(248, 113, 113, 0.08); }
+
+@media (max-width: 759px) {
+  /* Icon-only: the header is already tight below 760px (see AppHeader.vue),
+     and the title attribute on each button still exposes the full label. */
+  .btn-label,
+  .username {
+    display: none;
+  }
+
+  .ctrl-btn {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
 </style>

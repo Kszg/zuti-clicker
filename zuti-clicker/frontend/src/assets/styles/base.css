@@ -9,8 +9,21 @@
   --transition-base:   220ms ease;
   --transition-slow:   380ms ease;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  /* Self-hosted via @fontsource-variable/inter (imported in main.ts) — the
+     family name below must match its declared @font-face. */
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Never actually referenced anywhere in src/ (no code block, no data
+     table) — kept as an honest system stack rather than a second font
+     download nothing uses. */
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+
+  /* Shared layout dimensions — kept as tokens because the mobile sheet
+     (App.vue) and the toast host each need to position themselves relative
+     to the header and bottom tab bar without hardcoding the same numbers
+     in three places. */
+  --header-h: 52px;
+  --header-h-compact: 84px; /* header grows a second row (mini stats) below 760px */
+  --mobile-tabbar-h: 60px;
 }
 
 /* ── Dark theme ───────────────────────────────────────────── */
@@ -37,6 +50,9 @@
   --btn-buy-text: #fff;
   --btn-dis-bg:   #152035;
   --btn-dis-text: #3a5a7a;
+
+  --success: #22c55e;
+  --danger:  #f87171;
 
   --scrollbar-thumb: #1e3a5f;
 }
@@ -66,6 +82,9 @@
   --btn-dis-bg:   #e2e8f0;
   --btn-dis-text: #94a3b8;
 
+  --success: #16a34a;
+  --danger:  #dc2626;
+
   --scrollbar-thumb: #bfdbfe;
 }
 
@@ -74,6 +93,10 @@
 
 html, body, #app {
   height: 100%;
+  /* 100dvh accounts for mobile browser chrome (address bar) that 100vh
+     doesn't; the plain 100% above is the fallback for browsers without
+     dvh support. */
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -91,7 +114,19 @@ button {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Removing the browser's default focus ring on every button (above) left
+   keyboard focus completely invisible app-wide — nothing replaced it.
+   :focus-visible (unlike :focus) is already suppressed by browsers for a
+   mouse/touch-driven focus and shown only for keyboard navigation, so this
+   restores keyboard focus visibility without reintroducing a ring on click. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
 }
 
 /* ── Scrollbar ────────────────────────────────────────────── */

@@ -1,5 +1,5 @@
 export default {
-  app: { title: "Zuti Clicker" },
+  app: { title: "Zuti Clicker", titleCompact: "Zuti" },
   status: {
     title: "Haladás",
     tokens: "Tokenek",
@@ -14,7 +14,15 @@ export default {
     runClicks: "Menetbeli kattintás",
     runTime: "Menetidő"
   },
-  clicker: { hint: "Kattints a tokenekért!" },
+  clicker: {
+    hint: "Kattints a tokenekért!",
+    ariaLabel: "Kattints Dr. Zuti Pál portréjára tokenekért"
+  },
+  nav: {
+    title: "Panelek",
+    stats: "Statisztika",
+    shop: "Bolt"
+  },
   units: {
     title: "Egységek",
     owned: "db",
@@ -23,6 +31,7 @@ export default {
     tooltipCost: "Ár",
     tooltipGain: "Bevétel növekedés",
     tooltipEach: "Egységenként",
+    moreInfo: "További információ",
     names: {
       alpha: "Alfa",
       beta: "Béta",
@@ -60,9 +69,20 @@ export default {
     saving: "Mentés",
     autosave: "Automatikus mentés",
     autosaveInterval: "Gyakoriság",
-    closeBtn: "Kész"
+    intervals: {
+      "15": "15s",
+      "30": "30s",
+      "60": "1p",
+      "300": "5p"
+    },
+    cancelBtn: "Mégse",
+    closeBtn: "Kész",
+    saved: "Beállítások elmentve",
+    savedLocal: "Beállítások elmentve ezen az eszközön",
+    saveFailed: "Nem sikerült menteni a beállításokat — ezen az eszközön elmentve"
   },
   auth: {
+    modalAriaLabel: "Bejelentkezés vagy fiók létrehozása",
     loginTab: "Bejelentkezés",
     registerTab: "Regisztráció",
     emailLabel: "E-mail",
