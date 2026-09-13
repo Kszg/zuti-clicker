@@ -215,6 +215,18 @@ jobs:
           while IFS='=' read -r key value; do
             [ -z "$key" ] && continue
             case "$key" in \#*) continue ;; esac
+            # Strip CR (CRLF files) and a single layer of surrounding
+            # matching quotes, mirroring dotenv's own parsing - `cp` alone
+            # relies on dotenv to do this for the .env file, but this loop
+            # re-exports the raw value itself and must match that behavior
+            # (api/.env.example quotes DATABASE_URL etc., and without this
+            # the quotes end up as literal characters in the exported var).
+            value="${value%$'\r'}"
+            if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+              value="${value:1:-1}"
+            elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+              value="${value:1:-1}"
+            fi
             # GitHub Actions prints every step's full resolved env dict in
             # the log, and $GITHUB_ENV values are NOT auto-masked the way
             # secrets.* are - explicitly mask before export or every value
