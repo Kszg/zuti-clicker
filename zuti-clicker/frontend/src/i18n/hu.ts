@@ -31,6 +31,7 @@ export default {
     tooltipCost: "Ár",
     tooltipGain: "Bevétel növekedés",
     tooltipEach: "Egységenként",
+    moreInfo: "További információ",
     names: {
       alpha: "Alfa",
       beta: "Béta",

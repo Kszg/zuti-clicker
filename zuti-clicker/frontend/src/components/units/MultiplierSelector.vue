@@ -59,4 +59,13 @@ function label(m: Multiplier): string {
   border-color: var(--accent);
   color: #fff;
 }
+
+@media (max-width: 759px) {
+  /* This panel becomes a touch-driven mobile sheet at this width (see
+     App.vue) — its own compact desktop sizing is otherwise too small a
+     touch target. */
+  .mult-btn {
+    min-height: 44px;
+  }
+}
 </style>

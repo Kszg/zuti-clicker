@@ -31,6 +31,7 @@ export default {
     tooltipCost: "Cost",
     tooltipGain: "Income gain",
     tooltipEach: "Each unit",
+    moreInfo: "More info",
     names: {
       alpha: "Alpha",
       beta: "Beta",

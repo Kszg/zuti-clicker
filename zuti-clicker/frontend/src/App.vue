@@ -184,6 +184,12 @@ async function onConfirmDelete() {
   }
 }
 
+@media (max-width: 759px) and (prefers-reduced-motion: reduce) {
+  .game-layout .rail {
+    transition: none;
+  }
+}
+
 .mobile-scrim {
   display: none;
 }

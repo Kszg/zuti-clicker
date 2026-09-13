@@ -45,3 +45,52 @@
   from { opacity: 0; transform: scale(0.96) translateY(-6px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* prefers-reduced-motion: redefine each keyframe in place — every component
+   still declares the same `animation: <name> <duration> <easing>` it always
+   did, so nothing elsewhere needs to know reduced motion exists. A keyframe
+   redefinition can't shorten a component's own animation-duration (that's
+   fixed per call site), only change what happens during it, so "shorten"
+   below means reducing the motion itself to something calmer, not the
+   wall-clock time. SaveBar's `spin` (sync-in-progress) and PrestigeCeremony's
+   `ceremonyPulse` are handled the same way in their own scoped styles, since
+   they aren't shared keyframes. */
+@media (prefers-reduced-motion: reduce) {
+  /* Ambient/infinite — flatten to the resting state; nothing pulses. */
+  @keyframes breathe {
+    0%, 100% { box-shadow: 0 0 36px var(--accent-glow); }
+  }
+
+  /* One-shot reveals — stop; content appears already in its final state
+     instead of animating in. */
+  @keyframes pulseRing {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+  @keyframes slideInLeft {
+    from, to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideInRight {
+    from, to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes countUp {
+    0%, 100% { transform: scale(1); }
+  }
+
+  /* Entrances — shorten: keep the fade, drop the accompanying scale/move. */
+  @keyframes fadeScaleIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Click feedback is the game's core confirmation signal, so these are
+     reduced rather than removed: a small opacity dip instead of a scale
+     bounce, and a much shorter float distance instead of a 72px rise. */
+  @keyframes clickPop {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.75; }
+  }
+  @keyframes floatUp {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  }
+}

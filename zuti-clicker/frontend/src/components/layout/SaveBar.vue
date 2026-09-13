@@ -189,5 +189,11 @@ async function logout() {
   .username {
     display: none;
   }
+
+  .ctrl-btn {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
 }
 </style>
