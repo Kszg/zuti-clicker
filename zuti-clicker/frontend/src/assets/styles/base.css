@@ -9,8 +9,13 @@
   --transition-base:   220ms ease;
   --transition-slow:   380ms ease;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  /* Self-hosted via @fontsource-variable/inter (imported in main.ts) — the
+     family name below must match its declared @font-face. */
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Never actually referenced anywhere in src/ (no code block, no data
+     table) — kept as an honest system stack rather than a second font
+     download nothing uses. */
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
 
   /* Shared layout dimensions — kept as tokens because the mobile sheet
      (App.vue) and the toast host each need to position themselves relative
