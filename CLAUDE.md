@@ -214,6 +214,15 @@ any key added to one is added to the other in the same change.
   why, and how it was verified (tests run, manual checks, screenshots for
   UI). End commit messages and PR descriptions with the attribution footer
   currently specified by the harness for this session.
+- **MUST DO, before opening any PR that isn't docs/process-only: bump both
+  `api/package.json` and `frontend/package.json`'s `version` field together**,
+  even for a bugfix-only or small PR — this comparison is the *only* signal
+  `deploy.yml` uses to decide whether a merge to `main` cuts a real release
+  (see "CI/CD" below); a merged PR that forgets this silently ships with no
+  tagged release and no GHCR image beyond `latest`/`sha-*`, discovered only
+  after the fact. Do not wait to be asked — check this before every
+  `gh pr create` as routinely as running the tests. (PR #17 shipped without
+  this and needed a same-day follow-up bump PR — don't repeat that.)
 - Check `git status` before any destructive git operation.
 
 ## CI/CD
