@@ -34,7 +34,7 @@ describe("Save endpoints - authenticated", () => {
     const loginRes = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
     cookie = rawHeader.split(";")[0];
   });
 
@@ -116,7 +116,7 @@ describe("Save endpoints - prestige fields", () => {
     const loginRes = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
     cookie = rawHeader.split(";")[0];
   });
 
@@ -159,7 +159,7 @@ describe("Save endpoints - prestige defaults on first save", () => {
     const loginRes = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
     cookie = rawHeader.split(";")[0];
   });
 
@@ -186,7 +186,7 @@ describe("Save endpoints - prestige validation", () => {
     const loginRes = await api
       .post("/auth/login")
       .send({ email: user.email, password: user.password });
-    const rawHeader = (loginRes.headers["set-cookie"] as string[])[0];
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
     cookie = rawHeader.split(";")[0];
   });
 

@@ -204,6 +204,50 @@ A PhD-formula és a szorzók egyetlen helyen, a `frontend/src/utils/gameConstant
 
 ---
 
+## CI/CD
+
+Két GitHub Actions workflow fut a self-hosted runneren (`vbServer`, bare metal, Docker konténerezés nélkül):
+
+### `ci.yml` – tesztek PR-en
+
+Minden `main`-re nyíló pull request-en lefut, három egymástól független jobban (egyetlen runner miatt sorban futnak, de a State külön látszik):
+
+| Job | Mit ellenőriz |
+|---|---|
+| `typecheck` | `api`: `tsc --noEmit` · `frontend`: `vue-tsc --build` |
+| `frontend-tests` | Vitest (`src/**/__tests__/*.spec.ts`), szerver/adatbázis nélkül |
+| `api-tests` | Jest, éles szerver a `:2710` porton egy dedikált `zutiClickerTest` adatbázis ellen |
+
+Az `api-tests` job egy futtatáshoz kötött, runner-lokális `.env` fájlt vár `/mnt/raid1/zuti-clicker-ci/.env.ci` alatt (sosem GitHub secret) — ez tartalmazza a `zutiClickerTest` / `zutiClickerTestShadow` adatbázisok elérését és egy eldobható `CRYPTO_SECRET_KEY`-t. A teszt lefutása után a job a `cleanup:test-users --apply` scriptet futtatja, hogy a `test_<random>@example.com` felhasználók ne halmozódjanak.
+
+Mindhárom job feltölt egy `junit-<stage>` artifactot; egy negyedik (`reports`) job ezekből generálja a `.github/scripts/junit-report.mjs` scripttel a `report.html`, `report.ods` (valódi OpenDocument táblázat, Summary + Tests munkalapokkal) és `summary.md`/`summary.json` fájlokat, `test-reports` artifactként. Az ötödik (`summary`) job publikálja az eredményt:
+
+- a futás GitHub Actions job summary-jába,
+- egy "sticky" PR-kommentbe (pusholásonként frissül, nem szaporodik),
+- inline check-run annotációkba a hibás teszteknél.
+
+### `deploy.yml` – build, release, deploy
+
+Minden `main`-re kerülő push-on lefut (branch protection miatt ez mindig egy már CI-tesztelt, mergelt PR):
+
+1. **version** — beolvassa és összeveti az `api/package.json` és `frontend/package.json` verzióját (a kettőnek meg kell egyeznie — lásd a repo-konvenciót a kézzel duplikált értékekről), és megnézi, létezik-e már `v<version>` tag.
+2. **build-push** — megépíti és pusholja mindkét image-et a GitHub Container Registry-be (`ghcr.io/vb2007/zuti-clicker-api`, `ghcr.io/vb2007/zuti-clicker-frontend`), mindig `sha-<rövid_sha>` és `latest` taggel, új verzió esetén a puszta `<version>` taggel is.
+3. **release** (csak ha a verzió új) — létrehozza a `v<version>` taget és egy GitHub release-t automatikusan generált jegyzetekkel, kiegészítve image digest-ekkel és a mergelt PR CI-futásának teszteredményeivel. Csatolt fájlok: a verzióra rögzített `docker-compose.prod.yml`, egy `images.json` digest-lista, a frontend build tartalma (`.tar.gz`), és a teszt-riport csomag.
+4. **deploy** — csak a `docker-compose.prod.yml`-t szinkronizálja a `/mnt/raid1/zuti-clicker` telepítési könyvtárba (a már ott lévő `.env`-hez soha nem nyúl), lehúzza a sha-hoz rögzített image-eket, és újraindítja a stacket a meglévő healthcheckek megvárásával.
+
+**Migráció**: a deploy workflow **sosem** futtat `prisma migrate deploy`-t — ez továbbra is kézi, a deploy előtti lépés marad (lásd fent, "Adatbázis migráció").
+
+**Verziózás**: egy funkció leszállításakor mindkét `package.json`-ban (api + frontend) egyszerre kell emelni a `version` mezőt — ez a release-mechanizmus egyetlen forrása.
+
+**Visszaállás egy korábbi verzióra:**
+
+```bash
+cd /mnt/raid1/zuti-clicker
+IMAGE_TAG=sha-<korábbi_rövid_sha> docker compose -f docker-compose.prod.yml up -d
+```
+
+---
+
 ## Fontos tudnivalók fejlesztőknek
 
 - A projekt `"type": "module"` (ESM). CommonJS `require()` nem működik; minden import ESM `import` szintaxist használ.

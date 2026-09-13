@@ -7,7 +7,7 @@ const api = request(TestData.BASE_URL);
 
 async function loginAndGetCookie(email: string, password: string): Promise<string> {
   const res = await api.post("/auth/login").send({ email, password });
-  const rawHeader = (res.headers["set-cookie"] as string[])[0];
+  const rawHeader = (res.headers["set-cookie"] as unknown as string[])[0];
   return rawHeader.split(";")[0]; // strip attributes, keep name=value
 }
 

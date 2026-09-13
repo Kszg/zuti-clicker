@@ -1,0 +1,356 @@
+name: Build, Release & Deploy
+
+# Runs on every push to main (branch protection means that's always a merged,
+# already-CI-tested PR). Builds and pushes both images to GHCR, cuts a
+# GitHub release when the package.json version has changed, then pulls +
+# restarts the compose stack on the self-hosted host (vbServer). Migrations
+# are never run here - see CLAUDE.md "Database & migrations": they stay a
+# deliberate manual step before a deploy that needs them.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/vb2007/zuti-clicker-api
+  FRONTEND_IMAGE: ghcr.io/vb2007/zuti-clicker-frontend
+  FRONTEND_API_BASE_URL: https://zuticlicker-api.vb2007.hu
+  DEPLOY_DIR: /mnt/raid1/zuti-clicker
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Reads the version from both package.json files (must match - see CLAUDE.md
+  # "anything shared between them has to be duplicated by hand"), and checks
+  # whether it's new enough to warrant a tag + release.
+  # ---------------------------------------------------------------------------
+  version:
+    name: Determine version
+    runs-on: [self-hosted, Linux, X64]
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      is_release: ${{ steps.check_tag.outputs.is_release }}
+      short_sha: ${{ steps.read.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read and cross-check versions
+        id: read
+        run: |
+          API_VERSION=$(node -p "require('./zuti-clicker/api/package.json').version")
+          FRONTEND_VERSION=$(node -p "require('./zuti-clicker/frontend/package.json').version")
+          if [ "$API_VERSION" != "$FRONTEND_VERSION" ]; then
+            echo "::error::api/package.json ($API_VERSION) and frontend/package.json ($FRONTEND_VERSION) versions differ - bump both together."
+            exit 1
+          fi
+          echo "version=$API_VERSION" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version already has a tag
+        id: check_tag
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${{ steps.read.outputs.version }}" > /dev/null 2>&1; then
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Builds both images and pushes sha-<short_sha> + latest always, plus the
+  # bare <version> tag when this push is a new release.
+  # ---------------------------------------------------------------------------
+  build-push:
+    name: Build & push images
+    needs: [version]
+    runs-on: [self-hosted, Linux, X64]
+    outputs:
+      api_digest: ${{ steps.build_api.outputs.digest }}
+      frontend_digest: ${{ steps.build_frontend.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build tag list
+        id: tags
+        run: |
+          version="${{ needs.version.outputs.version }}"
+          short_sha="${{ needs.version.outputs.short_sha }}"
+          is_release="${{ needs.version.outputs.is_release }}"
+          api_tags="${{ env.API_IMAGE }}:sha-${short_sha}
+          ${{ env.API_IMAGE }}:latest"
+          fe_tags="${{ env.FRONTEND_IMAGE }}:sha-${short_sha}
+          ${{ env.FRONTEND_IMAGE }}:latest"
+          if [ "$is_release" = "true" ]; then
+            api_tags="${api_tags}
+          ${{ env.API_IMAGE }}:${version}"
+            fe_tags="${fe_tags}
+          ${{ env.FRONTEND_IMAGE }}:${version}"
+          fi
+          {
+            echo "api_tags<<TAGS"
+            echo "$api_tags"
+            echo "TAGS"
+            echo "fe_tags<<TAGS"
+            echo "$fe_tags"
+            echo "TAGS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build & push api image
+        id: build_api
+        uses: docker/build-push-action@v7
+        with:
+          context: zuti-clicker/api
+          push: true
+          tags: ${{ steps.tags.outputs.api_tags }}
+
+      - name: Build & push frontend image
+        id: build_frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: zuti-clicker/frontend
+          push: true
+          tags: ${{ steps.tags.outputs.fe_tags }}
+          build-args: |
+            VITE_API_BASE_URL=${{ env.FRONTEND_API_BASE_URL }}
+
+  # ---------------------------------------------------------------------------
+  # Only when the version changed: tags v<version>, cuts a GitHub release
+  # (auto-generated notes + a custom digest/test-results header), and attaches
+  # a pinned compose file, a digest manifest, the built frontend dist, and the
+  # test-report bundle from the merged PR's CI run (best-effort - never blocks
+  # the release if that lookup fails, e.g. for a workflow_dispatch run).
+  # ---------------------------------------------------------------------------
+  release:
+    name: Cut release
+    needs: [version, build-push]
+    if: needs.version.outputs.is_release == 'true'
+    runs-on: [self-hosted, Linux, X64]
+    # A job-level permissions block replaces the workflow-level one entirely
+    # rather than adding to it, so packages: read has to be listed here too -
+    # this job pulls the just-pushed frontend image to extract its dist/.
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare release assets
+        id: assets
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          SHORT_SHA: ${{ needs.version.outputs.short_sha }}
+          API_DIGEST: ${{ needs.build-push.outputs.api_digest }}
+          FRONTEND_DIGEST: ${{ needs.build-push.outputs.frontend_digest }}
+        run: |
+          mkdir -p release-assets
+
+          # docker-compose.prod.yml pinned to this exact version by default,
+          # so downloading just this asset and running it (with no IMAGE_TAG
+          # set) reproduces this release.
+          sed "s/\${IMAGE_TAG:-latest}/\${IMAGE_TAG:-${VERSION}}/g" \
+            zuti-clicker/docker-compose.prod.yml > release-assets/docker-compose.prod.yml
+
+          cat > release-assets/images.json <<JSON
+          {
+            "version": "${VERSION}",
+            "api": { "image": "${{ env.API_IMAGE }}", "tag": "${VERSION}", "digest": "${API_DIGEST}" },
+            "frontend": { "image": "${{ env.FRONTEND_IMAGE }}", "tag": "${VERSION}", "digest": "${FRONTEND_DIGEST}" }
+          }
+          JSON
+
+          # Frontend dist tarball: extracted from the exact image just built
+          # and pushed, so it's the byte-identical shipped build.
+          docker pull "${{ env.FRONTEND_IMAGE }}:sha-${SHORT_SHA}"
+          # This runner is persistent, not ephemeral - a leftover container
+          # from a previously failed run could still be sitting here.
+          docker rm -f fe-dist-extract > /dev/null 2>&1 || true
+          docker create --name fe-dist-extract "${{ env.FRONTEND_IMAGE }}:sha-${SHORT_SHA}"
+          docker cp fe-dist-extract:/usr/share/nginx/html ./frontend-dist
+          docker rm -f fe-dist-extract
+          tar -czf "release-assets/frontend-dist-${VERSION}.tar.gz" -C frontend-dist .
+          rm -rf frontend-dist
+
+      - name: Fetch test reports from the merged PR's CI run
+        id: reports
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require("fs");
+
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+            const merged = prs.find((p) => p.merged_at);
+            if (!merged) throw new Error("No merged PR found for this commit");
+
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "ci.yml",
+              head_sha: merged.head.sha,
+              status: "completed"
+            });
+            if (runs.workflow_runs.length === 0) throw new Error("No completed CI run found for the PR head commit");
+            const run = runs.workflow_runs[0];
+
+            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id
+            });
+            // report.html/report.ods/summary.md/summary.json each publish as
+            // their own individual, run-number-suffixed artifact (see
+            // ci.yml) rather than one combined "test-reports" bundle.
+            const reportArtifacts = artifacts.artifacts.filter(
+              (a) => a.name.startsWith("report-") || a.name.startsWith("summary-")
+            );
+            if (reportArtifacts.length === 0) throw new Error("No report/summary artifacts on that run");
+
+            fs.mkdirSync("release-assets/test-reports", { recursive: true });
+            for (const artifact of reportArtifacts) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: "zip"
+              });
+              // Verified empirically (fetched a direct/unzipped artifact's
+              // raw bytes and ran `file` on them): despite the endpoint
+              // name, archive: false uploads come back completely
+              // unwrapped - report.ods's own bytes ARE the file, not a zip
+              // containing it. Unzipping unconditionally would "succeed" on
+              // report.ods specifically (it's an OpenDocument file, which is
+              // itself a valid zip container) and explode it into its
+              // internal content.xml/styles.xml instead of preserving it,
+              // so just write the downloaded bytes out directly.
+              fs.writeFileSync(`release-assets/test-reports/${artifact.name}`, Buffer.from(download.data));
+            }
+
+            const summaryFile = reportArtifacts.find((a) => a.name.startsWith("summary-") && a.name.endsWith(".md"));
+            if (!summaryFile) throw new Error("summary.md artifact not found among the CI run's report artifacts");
+            const summary = fs.readFileSync(`release-assets/test-reports/${summaryFile.name}`, "utf-8");
+            core.setOutput("found", "true");
+            core.setOutput("summary", summary);
+
+      - name: Compose release body
+        id: body
+        # Dynamic, job-derived values (including the test summary, which
+        # originates from test names in this repo) are passed through env:
+        # and read as shell variables below, rather than interpolated
+        # directly into the script via ${{ }} - the safe pattern for
+        # anything that isn't a workflow-literal constant.
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          API_DIGEST: ${{ needs.build-push.outputs.api_digest }}
+          FRONTEND_DIGEST: ${{ needs.build-push.outputs.frontend_digest }}
+          REPORTS_FOUND: ${{ steps.reports.outputs.found }}
+          SUMMARY_MD: ${{ steps.reports.outputs.summary }}
+        run: |
+          {
+            echo "body<<RELEASE_BODY_EOF_9f2c1a"
+            echo "## zuti-clicker v${VERSION}"
+            echo ""
+            echo "**Images**"
+            echo ""
+            echo "| Service | Image | Digest |"
+            echo "|---|---|---|"
+            echo "| api | \`${{ env.API_IMAGE }}:${VERSION}\` | \`${API_DIGEST}\` |"
+            echo "| frontend | \`${{ env.FRONTEND_IMAGE }}:${VERSION}\` | \`${FRONTEND_DIGEST}\` |"
+            echo ""
+            if [ "$REPORTS_FOUND" = "true" ]; then
+              echo "**Test results (from the merged PR's CI run)**"
+              echo ""
+              echo "$SUMMARY_MD"
+            else
+              echo "_Test results were not available for this release (no matching CI run found)._"
+            fi
+            echo "RELEASE_BODY_EOF_9f2c1a"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: v${{ needs.version.outputs.version }}
+          body: ${{ steps.body.outputs.body }}
+          generate_release_notes: true
+          files: release-assets/**
+
+  # ---------------------------------------------------------------------------
+  # Syncs only docker-compose.prod.yml into the deploy directory (never .env),
+  # then pulls the exact sha-pinned images and restarts the stack.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy
+    needs: [version, build-push, release]
+    if: always() && needs.build-push.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped')
+    runs-on: [self-hosted, Linux, X64]
+    env:
+      IMAGE_TAG: sha-${{ needs.version.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync compose file to the deploy directory
+        run: cp zuti-clicker/docker-compose.prod.yml "${{ env.DEPLOY_DIR }}/docker-compose.prod.yml"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull images
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: docker compose -f docker-compose.prod.yml pull
+
+      - name: Restart stack
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+      - name: Wait for containers to become healthy
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          for i in $(seq 1 30); do
+            api_status=$(docker inspect --format '{{.State.Health.Status}}' zuticlicker-api 2>/dev/null || echo "missing")
+            fe_status=$(docker inspect --format '{{.State.Health.Status}}' zuticlicker-frontend 2>/dev/null || echo "missing")
+            if [ "$api_status" = "healthy" ] && [ "$fe_status" = "healthy" ]; then
+              echo "Both containers healthy."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::api ($api_status) / frontend ($fe_status) did not become healthy in time"
+          docker compose -f docker-compose.prod.yml logs --tail=100
+          exit 1
+
+      - name: Prune old images
+        if: always()
+        run: docker image prune -f --filter "until=168h"
