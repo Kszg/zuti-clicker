@@ -9,26 +9,35 @@ const emit = defineEmits<{ click: [payload: { x: number; y: number }] }>();
 const circleRef = ref<HTMLElement | null>(null);
 const wrapperRef = ref<HTMLElement | null>(null);
 
-// A press restarts the pop animation immediately, even mid-flight of a
-// previous one — the old code guarded against re-entrancy with `if (active)
-// return`, which meant a spam-clicked circle only ever animated its first
-// click and looked dead for every click after. Removing and re-adding the
-// class across a forced reflow retriggers the CSS animation every time.
-let popTimer: ReturnType<typeof setTimeout> | null = null;
-function restartPop() {
+// The circle is "pressed" (scaled down, glowing) for a short hold that every
+// click refreshes — not a keyframe restarted per click. An earlier version
+// force-restarted a fixed-duration keyframe on every click (remove the class,
+// force a reflow, re-add it), then rate-limited that restart to avoid rapid
+// clicking strobing the flash; both were the wrong shape for the problem —
+// throttling the restart meant most clicks under fast spam produced no
+// visible feedback at all, right back to the original "out of sync" bug.
+// Modeled on how Cookie Clicker's own cookie behaves instead: it doesn't
+// replay an animation per click, it just stays visually pressed for as long
+// as clicks keep arriving, and eases back only once they stop. Concretely:
+// entering "pressed" is a CSS *transition* (not a keyframe), so calling this
+// again while already pressed is a no-op — nothing to restart — and each
+// call simply pushes the release timer back out, extending the hold.
+const PRESS_HOLD_MS = 150;
+let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+function press() {
   const el = circleRef.value;
   if (!el) return;
-  if (popTimer) clearTimeout(popTimer);
-  el.classList.remove("circle-pop");
-  void el.offsetWidth; // force reflow so the next class add restarts the keyframe
-  el.classList.add("circle-pop");
-  popTimer = setTimeout(() => el.classList.remove("circle-pop"), 220);
+  el.classList.add("circle-pressed");
+  if (releaseTimer) clearTimeout(releaseTimer);
+  releaseTimer = setTimeout(() => el.classList.remove("circle-pressed"), PRESS_HOLD_MS);
 }
 
 // Concentric pulse rings as keyed, self-removing entries (same pattern
 // ClickerArea already uses for floating numbers), so overlapping clicks each
 // get their own ring that plays to completion instead of one ring fighting a
-// restart. Capped so spam-clicking can't grow the DOM without bound.
+// restart. Capped so spam-clicking can't grow the DOM without bound. Each
+// ring is a brand-new element playing its own animation once, so — unlike
+// the circle's own press state — there's no shared restart to throttle here.
 const MAX_RINGS = 6;
 const RING_LIFETIME_MS = 400;
 const rings = ref<{ id: number }[]>([]);
@@ -43,57 +52,37 @@ function spawnRing() {
   }, RING_LIFETIME_MS);
 }
 
-// The visual pop/ring restart itself is rate-limited, independently of the
-// click count — every click still earns a token and gets its own floating
-// "+X" number (see ClickerArea.vue), but re-flashing the circle on every
-// single one of them once click rate climbs past a few per second reads as
-// strobing rather than responsive, and above ~3 flashes/second risks the
-// WCAG general flash threshold (content must not flash more than three
-// times in any one-second window) for photosensitive players. Below this
-// rate every click still visibly pops the circle, same as before.
-const VISUAL_MIN_INTERVAL_MS = 350;
-// -Infinity, not 0: performance.now() is itself 0 at the start of a fresh
-// timeline (e.g. under fake timers in tests), which would make the very
-// first click register as "too soon" against a same-valued 0 baseline.
-let lastVisualAt = -Infinity;
-
 function registerClick(x: number, y: number) {
   emit("click", { x, y });
-  const now = performance.now();
-  if (now - lastVisualAt < VISUAL_MIN_INTERVAL_MS) return;
-  lastVisualAt = now;
-  restartPop();
+  press();
   spawnRing();
 }
 
 // A single click must count once, however it was triggered — pointerdown
 // (mouse/touch/pen) or a keyboard Enter/Space activating the native <button>.
 // pointerdown handles the pointer case immediately (snappier under spam than
-// waiting for pointerup/click), and sets a short-lived flag so the "click"
-// event the browser fires right after doesn't double-count it. The flag is
-// also cleared on a 0ms timeout rather than left to linger indefinitely: a
-// right-click never produces a "click" event (only the primary button does),
-// so without this a right-click followed immediately by a keyboard activation
-// would be silently swallowed by a stale flag.
-let pointerHandledClick = false;
-
+// waiting for pointerup/click), so the "click" event the browser fires right
+// after (for a real pointer press) must not also register it.
+//
+// This used to be guarded by a flag cleared on a 0ms timeout, which was a
+// real bug: that clear is racing the browser's own click dispatch, and on
+// real hardware (unlike a synchronous test simulation) there is no guarantee
+// click fires before the timeout — when it lost the race, the flag was
+// already cleared and the click counted a second time, visibly doubling
+// every gain. `MouseEvent.detail` sidesteps the race entirely: it's 0 for a
+// keyboard/synthetic activation and >=1 for a real pointer-originated click
+// (a stable, spec-backed distinction — the browser sets it directly on the
+// event, nothing here has to race or track it), so no timer or flag at all.
 function handlePointerDown(e: PointerEvent) {
   // Only the primary (left) and secondary (right) buttons earn a token;
   // middle/back/forward are ignored so autoscroll and browser navigation
   // gestures still work when they happen to land on the circle.
   if (e.button !== 0 && e.button !== 2) return;
-  pointerHandledClick = true;
-  setTimeout(() => {
-    pointerHandledClick = false;
-  }, 0);
   registerClick(e.clientX, e.clientY);
 }
 
 function handleClick(e: MouseEvent) {
-  if (pointerHandledClick) {
-    pointerHandledClick = false;
-    return;
-  }
+  if (e.detail !== 0) return; // a real pointer click — pointerdown already handled it
   // Keyboard-triggered activation: MouseEvent.clientX/Y are 0 for a
   // synthetic click, so anchor the floating number to the circle's own
   // center instead of the viewport origin.
@@ -177,8 +166,15 @@ function handleClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* One transition duration/easing governs both directions (entering and
+     leaving .circle-pressed) rather than one per state — which side "wins"
+     when a class toggle changes both the property and its own transition is
+     inconsistent across browsers, so this sidesteps that entirely. An
+     exponential ease-out (decelerate smoothly, no overshoot) rather than a
+     bounce/elastic curve, which reads as dated rather than snappy. */
   transition:
-    box-shadow var(--transition-fast),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 150ms ease,
     border-color var(--transition-fast);
   position: relative;
   z-index: 1;
@@ -191,8 +187,8 @@ function handleClick(e: MouseEvent) {
     0 0 80px var(--accent-glow);
 }
 
-.circle.circle-pop {
-  animation: clickPop 0.22s ease both;
+.circle.circle-pressed {
+  transform: scale(0.91);
   box-shadow: 0 0 64px var(--accent-glow);
 }
 
@@ -247,5 +243,16 @@ function handleClick(e: MouseEvent) {
 
 .ring-burst {
   animation: pulseRing 0.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Drop the squish transform; the glow burst (box-shadow, not motion)
+     still confirms the click. */
+  .circle {
+    transition: box-shadow 150ms ease, border-color var(--transition-fast);
+  }
+  .circle.circle-pressed {
+    transform: none;
+  }
 }
 </style>

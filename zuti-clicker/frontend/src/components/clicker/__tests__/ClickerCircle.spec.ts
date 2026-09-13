@@ -40,61 +40,78 @@ describe("ClickerCircle", () => {
     expect(wrapper.emitted("click")).toBeUndefined();
   });
 
-  it("does not double-count: the browser's follow-up click after a pointerdown is swallowed", async () => {
+  it("regression: does not double-count a real pointer click (pointerdown + its own follow-up click)", async () => {
+    // detail >= 1 is what a genuine pointer-originated click carries (this is
+    // what distinguishes it from a keyboard/synthetic one below) — this is
+    // what the browser's own follow-up click after our pointerdown handler
+    // looks like.
+    //
+    // This used to be guarded by a flag cleared on a 0ms setTimeout, racing
+    // the browser's own click dispatch — a race a synchronous test can't
+    // reproduce, but real hardware could and did lose, doubling every gain.
+    // MouseEvent.detail sidesteps the race: it's set by the browser on the
+    // event itself, nothing here has to time anything.
     const wrapper = mount(ClickerCircle);
     await wrapper.trigger("pointerdown", { button: 0, clientX: 5, clientY: 5 });
-    await wrapper.trigger("click", { clientX: 5, clientY: 5 });
+    await wrapper.trigger("click", { clientX: 5, clientY: 5, detail: 1 });
     expect(wrapper.emitted("click")).toHaveLength(1);
   });
 
-  it("earns exactly once from a keyboard-triggered click (no preceding pointerdown)", async () => {
+  it("a real pointer click's own follow-up click event is skipped even with no preceding pointerdown in this test", async () => {
     const wrapper = mount(ClickerCircle);
-    await wrapper.trigger("click");
+    await wrapper.trigger("click", { detail: 1 });
+    expect(wrapper.emitted("click")).toBeUndefined();
+  });
+
+  it("earns exactly once from a keyboard-triggered click (detail 0, no preceding pointerdown)", async () => {
+    const wrapper = mount(ClickerCircle);
+    await wrapper.trigger("click"); // detail defaults to 0, matching a real keyboard activation
     expect(wrapper.emitted("click")).toHaveLength(1);
   });
 
-  it("regression: a second click after the first pop clears restarts the animation", async () => {
+  it("a click presses the circle", async () => {
     const wrapper = mount(ClickerCircle);
     const circle = wrapper.find(".circle").element;
-
     await wrapper.trigger("pointerdown", { button: 0, clientX: 1, clientY: 1 });
-    expect(circle.classList.contains("circle-pop")).toBe(true);
-
-    // Past both the 220ms pop and the visual throttle window (below) — a
-    // fresh click here must restart the pop. The old guard (`if (active)
-    // return`) made this a no-op with no visual feedback at all.
-    vi.advanceTimersByTime(400);
-    await wrapper.trigger("pointerdown", { button: 0, clientX: 2, clientY: 2 });
-    expect(wrapper.emitted("click")).toHaveLength(2);
-    expect(circle.classList.contains("circle-pop")).toBe(true);
+    expect(circle.classList.contains("circle-pressed")).toBe(true);
   });
 
-  it("regression: rapid spam still earns every click, but the visual pop is rate-limited rather than strobing", async () => {
-    // Restarting the pop/ring burst on every single click once the click
-    // rate climbs into the double digits per second reads as flashing, not
-    // responsive, and risks the WCAG general flash threshold (content must
-    // not flash more than 3 times/second) for photosensitive players.
+  it("releases back to normal once no click has arrived for the hold duration", async () => {
+    const wrapper = mount(ClickerCircle);
+    const circle = wrapper.find(".circle").element;
+    await wrapper.trigger("pointerdown", { button: 0, clientX: 1, clientY: 1 });
+
+    vi.advanceTimersByTime(151); // just past the 150ms hold
+    expect(circle.classList.contains("circle-pressed")).toBe(false);
+  });
+
+  it("regression: rapid spam keeps the circle continuously held rather than flickering per click", async () => {
+    // The old model force-restarted a fixed-duration keyframe on every
+    // click, which either looked out of sync (when nothing guarded against
+    // re-entrancy) or, when a later fix throttled that restart to stop it
+    // strobing, meant most clicks under fast spam produced no visible
+    // feedback at all — the same "out of sync" complaint from a different
+    // angle. This models Cookie Clicker's own cookie instead: every click
+    // just holds the pressed state a little longer, so a burst of clicks
+    // faster than the hold duration keeps it continuously pressed with zero
+    // flicker in between, and every one of them still earns.
     const wrapper = mount(ClickerCircle);
     const circle = wrapper.find(".circle").element;
 
     await wrapper.trigger("pointerdown", { button: 0, clientX: 0, clientY: 0 });
-    expect(circle.classList.contains("circle-pop")).toBe(true);
+    expect(circle.classList.contains("circle-pressed")).toBe(true);
 
-    // Three more clicks in rapid succession, all well inside the throttle
-    // window — every one must still count as a click (the score keeps
-    // moving at full input rate)...
-    for (let i = 1; i <= 3; i++) {
-      vi.advanceTimersByTime(50);
+    for (let i = 1; i <= 5; i++) {
+      vi.advanceTimersByTime(50); // well inside the 150ms hold — never lapses
       await wrapper.trigger("pointerdown", { button: 0, clientX: i, clientY: i });
+      expect(circle.classList.contains("circle-pressed")).toBe(true);
     }
-    expect(wrapper.emitted("click")).toHaveLength(4);
+    expect(wrapper.emitted("click")).toHaveLength(6);
 
-    // ...but the very first pop's own 220ms timer is what clears the class
-    // here (at 50*3=150ms elapsed the class is still present from click #1;
-    // advancing to just past its original 220ms mark clears it) — proving
-    // none of clicks #2-#4 rescheduled a fresh 220ms timer of their own.
-    vi.advanceTimersByTime(80); // total elapsed since click #1: 230ms
-    expect(circle.classList.contains("circle-pop")).toBe(false);
+    // Only once clicks actually stop does it release, timed from the *last*
+    // one, not the first.
+    vi.advanceTimersByTime(151);
+    expect(circle.classList.contains("circle-pressed")).toBe(false);
   });
 
   it("the portrait cannot be dragged out of the circle", () => {
