@@ -128,7 +128,19 @@ onUnmounted(() => {
             @focus="onInfoFocus"
             @blur="focused = false"
           >
-            ℹ️
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+              <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4" />
+              <circle cx="8" cy="4.7" r="1" fill="currentColor" />
+              <line
+                x1="8"
+                y1="7.2"
+                x2="8"
+                y2="11.6"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+              />
+            </svg>
           </button>
         </div>
         <div class="unit-sub">
@@ -231,22 +243,29 @@ onUnmounted(() => {
   padding: 0;
   border-radius: 50%;
   background: transparent;
-  font-size: 13px;
-  line-height: 1;
-  opacity: 0.7;
-  transition: opacity var(--transition-fast);
-  /* the visible circle is 20px, but the hit target is padded out to the
-     44px touch-target minimum via a transparent ::before */
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
   position: relative;
-}
-.info-btn::before {
-  content: "";
-  position: absolute;
-  inset: -12px;
 }
 .info-btn:hover,
 .info-btn:focus-visible {
-  opacity: 1;
+  color: var(--accent-text);
+}
+
+/* The 20px icon is a precise, small hover target on purpose — hovering
+   near-but-not-on it must not open the tooltip. An earlier version padded
+   the hit target out to 44px unconditionally (a transparent ::before) for
+   touch reachability, but that same padding is exactly what let a mouse
+   trigger it from noticeably off the visible icon. Touch has no such
+   precision concern (a tap is a single contact point, not "near" anything
+   the way a mouse can hover past), so the padding now only applies on
+   devices that can't hover at all. */
+@media (hover: none) and (pointer: coarse) {
+  .info-btn::before {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
 }
 
 .unit-sub {
