@@ -348,11 +348,35 @@ jobs:
             --input "${{ github.workspace }}/artifacts" \
             --out "${{ github.workspace }}/test-reports"
 
-      - name: Upload aggregated reports
+      # Uploaded individually (archive: false) rather than as one zipped
+      # bundle, so each is directly downloadable/viewable from the run's
+      # Artifacts list without extracting anything first.
+      - name: Upload report.html
         uses: actions/upload-artifact@v7
         with:
-          name: test-reports
-          path: test-reports
+          path: test-reports/report.html
+          archive: false
+          retention-days: 30
+
+      - name: Upload report.ods
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-reports/report.ods
+          archive: false
+          retention-days: 30
+
+      - name: Upload summary.md
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-reports/summary.md
+          archive: false
+          retention-days: 30
+
+      - name: Upload summary.json
+        uses: actions/upload-artifact@v7
+        with:
+          path: test-reports/summary.json
+          archive: false
           retention-days: 30
 
   # ---------------------------------------------------------------------------
@@ -369,10 +393,13 @@ jobs:
       pull-requests: write
       checks: write
     steps:
-      - name: Download aggregated reports
+      # Only summary.md is needed here (job summary + PR comment body) - the
+      # other report files are individual, unzipped artifacts on the run
+      # page for anyone who wants report.html/report.ods/summary.json.
+      - name: Download summary.md
         uses: actions/download-artifact@v8
         with:
-          name: test-reports
+          name: summary.md
           path: test-reports
 
       - name: Download raw JUnit files (for annotations)
