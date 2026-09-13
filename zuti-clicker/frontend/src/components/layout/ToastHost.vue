@@ -74,11 +74,19 @@ const toast = useToastStore();
 }
 
 .toast-close {
+  position: relative;
   flex-shrink: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 11px;
   padding: 2px;
+}
+/* Visible glyph stays small; the tap target is padded out to 44px via a
+   transparent ::before, same technique as UnitCard's info button. */
+.toast-close::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
 }
 .toast-close:hover { color: var(--text-primary); }
 

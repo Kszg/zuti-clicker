@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { nextTick } from "vue";
 import { setActivePinia, createPinia } from "pinia";
-import { mount, DOMWrapper, type VueWrapper } from "@vue/test-utils";
+import { mount, DOMWrapper, flushPromises, type VueWrapper } from "@vue/test-utils";
 import SettingsModal from "@/components/modals/SettingsModal.vue";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -140,6 +140,41 @@ describe("SettingsModal", () => {
 
     expect(api.settings.store).toHaveBeenCalledTimes(1);
     expect(toast.toasts[0]!.message).toBe("Settings saved");
+  });
+
+  it("regression: Escape is ignored while a Done-triggered save is in flight", async () => {
+    loginAs();
+    let resolveStore!: (v: { message: string; settings: typeof DEFAULT_SETTINGS & { updatedAt: string } }) => void;
+    vi.mocked(api.settings.store).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveStore = resolve;
+      })
+    );
+
+    const settings = useSettingsStore();
+    openModal();
+    await nextTick();
+    const body = new DOMWrapper(document.body);
+
+    const lightBtn = body.findAll(".seg-btn").find((b) => b.text() === "Light")!;
+    await lightBtn.trigger("click");
+
+    const doneBtn = body.findAll("button").find((b) => b.text() === "Done")!;
+    await doneBtn.trigger("click"); // starts the (still-pending) save
+
+    // Escape arrives while the request is in flight — must not revert the
+    // theme or close the modal out from under the pending save.
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await nextTick();
+    expect(settings.theme).toBe("light");
+    const ui = useUiStore();
+    expect(ui.settingsModalOpen).toBe(true);
+
+    resolveStore({ message: "ok", settings: { ...DEFAULT_SETTINGS, updatedAt: new Date().toISOString() } });
+    await flushPromises();
+
+    expect(settings.theme).toBe("light"); // the save's own value, untouched
+    expect(ui.settingsModalOpen).toBe(false); // Done's own close still runs
   });
 
   it("Done (logged in, server error) reports failure but still closes", async () => {

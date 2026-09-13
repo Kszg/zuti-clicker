@@ -36,6 +36,12 @@ function close() {
 }
 
 function handleCancel() {
+  // Both action buttons disable while a Done-triggered save is in flight,
+  // but Escape/backdrop reach this the same way — without this guard,
+  // Escaping mid-save would revert the very values already being (or just)
+  // sent to the server, arriving after the fact as a confusingly-timed
+  // "Settings saved" toast for a change the UI had already discarded.
+  if (saving.value) return;
   if (openSnapshot.value) settings.restore(openSnapshot.value);
   close();
 }

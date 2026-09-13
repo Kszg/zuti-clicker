@@ -136,6 +136,7 @@ function unlockScroll() {
         aria-modal="true"
         :aria-label="title ? undefined : ariaLabel"
         :aria-labelledby="title ? titleId : undefined"
+        tabindex="-1"
       >
         <h2 v-if="title" :id="titleId" class="modal-title">{{ title }}</h2>
         <slot />

@@ -84,5 +84,25 @@ describe("UnitCard", () => {
       expect(tip.text()).toContain("Alpha");
       expect(tip.text()).toContain("A basic token generator.");
     });
+
+    it("closes on scroll rather than going stale at a scrolled-past position", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".info-btn").trigger("focus");
+      expect(body().find(".tooltip").exists()).toBe(true);
+
+      window.dispatchEvent(new Event("scroll"));
+      await wrapper.vm.$nextTick();
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("closes on window resize", async () => {
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".unit-card").trigger("mouseenter");
+      expect(body().find(".tooltip").exists()).toBe(true);
+
+      window.dispatchEvent(new Event("resize"));
+      await wrapper.vm.$nextTick();
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
   });
 });

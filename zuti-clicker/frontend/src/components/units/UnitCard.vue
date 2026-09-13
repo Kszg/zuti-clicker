@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useId } from "vue";
+import { computed, ref, useId, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
@@ -88,6 +88,23 @@ function onInfoFocus() {
   focused.value = true;
   positionTooltip();
 }
+
+// The tooltip's position is computed once, on open — it doesn't track the
+// anchor continuously. Scrolling the shop list (or the page) while it's open
+// would leave it visually detached from the card it describes, so close it
+// instead of letting it go stale. A capture-phase listener catches scrolling
+// on the shop panel's own `overflow-y: auto` list, which doesn't bubble to
+// window as a normal listener would need.
+function closeTooltip() {
+  hovered.value = false;
+  focused.value = false;
+}
+window.addEventListener("scroll", closeTooltip, true);
+window.addEventListener("resize", closeTooltip);
+onUnmounted(() => {
+  window.removeEventListener("scroll", closeTooltip, true);
+  window.removeEventListener("resize", closeTooltip);
+});
 </script>
 
 <template>
