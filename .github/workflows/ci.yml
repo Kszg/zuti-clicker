@@ -205,6 +205,23 @@ jobs:
           fi
           cp "$ENV_CI_FILE" .env
 
+          # Also export every key into $GITHUB_ENV (real process env for all
+          # later steps), not just the file: dotenv (used by both
+          # prisma.config.ts and src/index.ts) never overrides a variable
+          # that's already set in the environment, even to an empty string -
+          # and this runner is a persistent, non-ephemeral machine, so an
+          # already-set DATABASE_URL etc. from outside this workflow would
+          # otherwise silently win over the file we just copied in.
+          while IFS='=' read -r key value; do
+            [ -z "$key" ] && continue
+            case "$key" in \#*) continue ;; esac
+            {
+              echo "${key}<<CI_ENV_VALUE_EOF"
+              echo "$value"
+              echo "CI_ENV_VALUE_EOF"
+            } >> "$GITHUB_ENV"
+          done < "$ENV_CI_FILE"
+
       - name: Generate Prisma client
         working-directory: zuti-clicker/api
         run: pnpm exec prisma generate
