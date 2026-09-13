@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { formatGain } from "@/utils/formatters";
+
 defineProps<{ x: number; y: number; amount: number }>();
 </script>
 
 <template>
-  <div class="float-num" :style="{ left: `${x}px`, top: `${y}px` }">+{{ amount }}</div>
+  <div class="float-num" :style="{ left: `${x}px`, top: `${y}px` }">+{{ formatGain(amount) }}</div>
 </template>
 
 <style scoped>

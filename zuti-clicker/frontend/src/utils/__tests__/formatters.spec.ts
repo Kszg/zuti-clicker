@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatNumber, formatRate, formatTime, formatPercent } from "@/utils/formatters";
+import { formatNumber, formatRate, formatTime, formatPercent, formatGain } from "@/utils/formatters";
 
 describe("formatNumber - regression", () => {
   it("matches the existing implementation's known values", () => {
@@ -81,6 +81,35 @@ describe("formatPercent", () => {
   it("renders non-finite input as 0", () => {
     expect(formatPercent(Infinity)).toBe("0");
     expect(formatPercent(NaN)).toBe("0");
+  });
+});
+
+describe("formatGain - regression", () => {
+  it("trims the raw float from a fractional prestige multiplier to 2 decimals", () => {
+    // The bug this guards: 32 PhD -> 1 + 0.02*32 === 1.6400000000000001, shown
+    // to the player verbatim as "+1.6400000000000001".
+    expect(formatGain(1 + 0.02 * 32)).toBe("1.64");
+  });
+
+  it("trims trailing zeros rather than always showing 2 decimals", () => {
+    expect(formatGain(1)).toBe("1");
+    expect(formatGain(1 + 0.02 * 50)).toBe("2"); // 50 PhD -> exactly x2
+    expect(formatGain(1 + 0.02 * 25)).toBe("1.5"); // 25 PhD (odd) -> x1.5
+  });
+
+  it("carries a value that rounds up to 1000 onto the suffix ladder", () => {
+    expect(formatGain(999.996)).toBe("1.00K");
+    expect(formatGain(999.994)).toBe("999.99");
+  });
+
+  it("shares the suffix/exponential ladder with formatNumber above 1000", () => {
+    expect(formatGain(1234)).toBe("1.23K");
+    expect(formatGain(1e36)).toBe("1.00e36");
+  });
+
+  it("renders non-finite input distinctly", () => {
+    expect(formatGain(Infinity)).toBe("∞");
+    expect(formatGain(NaN)).toBe("0");
   });
 });
 

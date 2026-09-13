@@ -41,6 +41,22 @@ export function formatPercent(value: number): string {
   return value.toFixed(1).replace(/\.0$/, "");
 }
 
+// Floating "+X" click value. A fractional prestige multiplier (e.g. 32 PhD ->
+// x1.6400000000000001) must never reach the DOM as a raw float — round to 2
+// decimals and trim trailing zeros, same spirit as formatPercent's trim but
+// keeping up to 2 places since a per-click gain has no half-step meaning to
+// preserve. toFixed(2) can carry a value like 999.996 up to "1000.00", which
+// belongs on the suffix ladder, not printed as a bare 4-digit number.
+export function formatGain(n: number): string {
+  if (Number.isNaN(n)) return "0";
+  if (!isFinite(n)) return "∞";
+  if (n < 1000) {
+    const rounded = Number(n.toFixed(2));
+    return rounded < 1000 ? String(rounded) : formatScaled(rounded, 2);
+  }
+  return formatScaled(n, 2);
+}
+
 export function formatTime(seconds: number): string {
   const s = Math.floor(seconds);
   if (s < 60) return `${s}s`;
