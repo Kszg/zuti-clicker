@@ -105,7 +105,7 @@ jobs:
             fe_failure="<failure message=\"vue-tsc --build exited with code ${fe_status}\">See the Typecheck frontend step log</failure>"
           fi
           total_time=$((api_dur + fe_dur))
-          cat > reports/junit-typecheck.xml <<XML
+          cat > reports/junit-typecheck-${{ github.run_number }}.xml <<XML
           <?xml version="1.0" encoding="UTF-8"?>
           <testsuites name="typecheck" tests="2" failures="${failures}" time="${total_time}">
             <testsuite name="typecheck" tests="2" failures="${failures}" time="${total_time}">
@@ -114,7 +114,7 @@ jobs:
             </testsuite>
           </testsuites>
           XML
-          cat reports/junit-typecheck.xml
+          cat reports/junit-typecheck-${{ github.run_number }}.xml
 
       # Named junit-<stage>.xml (not plain junit.xml) so it can upload
       # unzipped (archive: false) with a name that won't collide with the
@@ -123,7 +123,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          path: reports/junit-typecheck.xml
+          path: reports/junit-typecheck-${{ github.run_number }}.xml
           archive: false
           retention-days: 14
           if-no-files-found: warn
@@ -160,7 +160,7 @@ jobs:
         working-directory: zuti-clicker/frontend
         run: >
           pnpm exec vitest run --reporter=default --reporter=junit
-          --outputFile.junit=reports/junit-frontend-tests.xml
+          --outputFile.junit=reports/junit-frontend-tests-${{ github.run_number }}.xml
 
       # Named junit-<stage>.xml (not plain junit.xml) so it can upload
       # unzipped (archive: false) with a name that won't collide with the
@@ -169,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          path: zuti-clicker/frontend/reports/junit-frontend-tests.xml
+          path: zuti-clicker/frontend/reports/junit-frontend-tests-${{ github.run_number }}.xml
           archive: false
           retention-days: 14
           if-no-files-found: warn
@@ -281,7 +281,7 @@ jobs:
         working-directory: zuti-clicker/api
         env:
           JEST_JUNIT_OUTPUT_DIR: reports
-          JEST_JUNIT_OUTPUT_NAME: junit-api-tests.xml
+          JEST_JUNIT_OUTPUT_NAME: junit-api-tests-${{ github.run_number }}.xml
         run: >
           node --experimental-vm-modules node_modules/jest/bin/jest.js
           --config=jest.config.cjs --reporters=default --reporters=jest-junit
@@ -316,7 +316,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          path: zuti-clicker/api/reports/junit-api-tests.xml
+          path: zuti-clicker/api/reports/junit-api-tests-${{ github.run_number }}.xml
           archive: false
           retention-days: 14
           if-no-files-found: warn
@@ -350,12 +350,16 @@ jobs:
           pattern: junit-*
           path: artifacts
 
+      # --suffix appends the run number to every output filename, so
+      # downloading the same report across different runs into one local
+      # folder never collides.
       - name: Generate HTML/ODS/summary reports
         working-directory: .github/scripts
         run: |
           node junit-report.mjs \
             --input "${{ github.workspace }}/artifacts" \
-            --out "${{ github.workspace }}/test-reports"
+            --out "${{ github.workspace }}/test-reports" \
+            --suffix "${{ github.run_number }}"
 
       # Uploaded individually (archive: false) rather than as one zipped
       # bundle, so each is directly downloadable/viewable from the run's
@@ -363,28 +367,28 @@ jobs:
       - name: Upload report.html
         uses: actions/upload-artifact@v7
         with:
-          path: test-reports/report.html
+          path: test-reports/report-${{ github.run_number }}.html
           archive: false
           retention-days: 30
 
       - name: Upload report.ods
         uses: actions/upload-artifact@v7
         with:
-          path: test-reports/report.ods
+          path: test-reports/report-${{ github.run_number }}.ods
           archive: false
           retention-days: 30
 
       - name: Upload summary.md
         uses: actions/upload-artifact@v7
         with:
-          path: test-reports/summary.md
+          path: test-reports/summary-${{ github.run_number }}.md
           archive: false
           retention-days: 30
 
       - name: Upload summary.json
         uses: actions/upload-artifact@v7
         with:
-          path: test-reports/summary.json
+          path: test-reports/summary-${{ github.run_number }}.json
           archive: false
           retention-days: 30
 
@@ -408,7 +412,7 @@ jobs:
       - name: Download summary.md
         uses: actions/download-artifact@v8
         with:
-          name: summary.md
+          name: summary-${{ github.run_number }}.md
           path: test-reports
 
       - name: Download raw JUnit files (for annotations)
@@ -418,14 +422,14 @@ jobs:
           path: artifacts
 
       - name: Publish job summary
-        run: cat test-reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+        run: cat "test-reports/summary-${{ github.run_number }}.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post sticky PR comment
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require("fs");
-            const body = fs.readFileSync("test-reports/summary.md", "utf-8");
+            const body = fs.readFileSync("test-reports/summary-${{ github.run_number }}.md", "utf-8");
             const marker = "<!-- zuti-clicker-ci-summary -->";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const commentBody = `${marker}\n## Test summary\n\n${body}\n[Full HTML/ODS report](${runUrl})\n`;
