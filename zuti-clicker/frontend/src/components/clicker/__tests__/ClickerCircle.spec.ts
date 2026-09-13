@@ -53,20 +53,48 @@ describe("ClickerCircle", () => {
     expect(wrapper.emitted("click")).toHaveLength(1);
   });
 
-  it("regression: spam-clicking restarts the pop animation on every click, not just the first", async () => {
+  it("regression: a second click after the first pop clears restarts the animation", async () => {
     const wrapper = mount(ClickerCircle);
     const circle = wrapper.find(".circle").element;
 
     await wrapper.trigger("pointerdown", { button: 0, clientX: 1, clientY: 1 });
     expect(circle.classList.contains("circle-pop")).toBe(true);
 
-    // Advance partway through the 220ms pop, well before it would clear on
-    // its own, then click again. The old guard (`if (active) return`) made
-    // this second click a no-op with no visual feedback at all.
-    vi.advanceTimersByTime(50);
+    // Past both the 220ms pop and the visual throttle window (below) — a
+    // fresh click here must restart the pop. The old guard (`if (active)
+    // return`) made this a no-op with no visual feedback at all.
+    vi.advanceTimersByTime(400);
     await wrapper.trigger("pointerdown", { button: 0, clientX: 2, clientY: 2 });
     expect(wrapper.emitted("click")).toHaveLength(2);
     expect(circle.classList.contains("circle-pop")).toBe(true);
+  });
+
+  it("regression: rapid spam still earns every click, but the visual pop is rate-limited rather than strobing", async () => {
+    // Restarting the pop/ring burst on every single click once the click
+    // rate climbs into the double digits per second reads as flashing, not
+    // responsive, and risks the WCAG general flash threshold (content must
+    // not flash more than 3 times/second) for photosensitive players.
+    const wrapper = mount(ClickerCircle);
+    const circle = wrapper.find(".circle").element;
+
+    await wrapper.trigger("pointerdown", { button: 0, clientX: 0, clientY: 0 });
+    expect(circle.classList.contains("circle-pop")).toBe(true);
+
+    // Three more clicks in rapid succession, all well inside the throttle
+    // window — every one must still count as a click (the score keeps
+    // moving at full input rate)...
+    for (let i = 1; i <= 3; i++) {
+      vi.advanceTimersByTime(50);
+      await wrapper.trigger("pointerdown", { button: 0, clientX: i, clientY: i });
+    }
+    expect(wrapper.emitted("click")).toHaveLength(4);
+
+    // ...but the very first pop's own 220ms timer is what clears the class
+    // here (at 50*3=150ms elapsed the class is still present from click #1;
+    // advancing to just past its original 220ms mark clears it) — proving
+    // none of clicks #2-#4 rescheduled a fresh 220ms timer of their own.
+    vi.advanceTimersByTime(80); // total elapsed since click #1: 230ms
+    expect(circle.classList.contains("circle-pop")).toBe(false);
   });
 
   it("the portrait cannot be dragged out of the circle", () => {

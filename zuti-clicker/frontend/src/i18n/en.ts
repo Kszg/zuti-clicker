@@ -1,5 +1,5 @@
 export default {
-  app: { title: "Zuti Clicker" },
+  app: { title: "Zuti Clicker", titleCompact: "Zuti" },
   status: {
     title: "Progress",
     tokens: "Tokens",

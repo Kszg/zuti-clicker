@@ -23,7 +23,8 @@ function toggleLanguage() {
 <template>
   <header class="app-header">
     <div class="brand">
-      <span class="brand-name">{{ t("app.title") }}</span>
+      <span class="brand-name brand-full">{{ t("app.title") }}</span>
+      <span class="brand-name brand-compact">{{ t("app.titleCompact") }}</span>
     </div>
 
     <SaveBar />
@@ -94,6 +95,10 @@ function toggleLanguage() {
   letter-spacing: -0.4px;
 }
 
+.brand-compact {
+  display: none;
+}
+
 .controls {
   display: flex;
   gap: 6px;
@@ -141,13 +146,15 @@ function toggleLanguage() {
   }
 
   /* Real estate is too tight below 760px for the full brand name alongside
-     Sync/account controls and three icon buttons — trim to an initial and
-     drop the language code text (the flag alone still identifies it). */
-  .brand-name {
-    font-size: 0;
+     Sync/account controls and three icon buttons — swap to a shorter name
+     (not a single truncated letter, which reads as broken rather than
+     intentional) and drop the language code text (the flag alone still
+     identifies it). */
+  .brand-full {
+    display: none;
   }
-  .brand-name::first-letter {
-    font-size: 17px;
+  .brand-compact {
+    display: inline;
   }
   .lang-code {
     display: none;

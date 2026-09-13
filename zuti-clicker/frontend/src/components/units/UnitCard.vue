@@ -129,7 +129,7 @@ onUnmounted(() => {
             @focus="onInfoFocus"
             @blur="focused = false"
           >
-            ⓘ
+            ℹ️
           </button>
         </div>
         <div class="unit-sub">
@@ -232,10 +232,10 @@ onUnmounted(() => {
   padding: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
-  transition: color var(--transition-fast);
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
   /* the visible circle is 20px, but the hit target is padded out to the
      44px touch-target minimum via a transparent ::before */
   position: relative;
@@ -247,7 +247,7 @@ onUnmounted(() => {
 }
 .info-btn:hover,
 .info-btn:focus-visible {
-  color: var(--accent-text);
+  opacity: 1;
 }
 
 .unit-sub {

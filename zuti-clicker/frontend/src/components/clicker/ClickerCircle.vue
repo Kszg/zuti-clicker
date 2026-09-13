@@ -43,8 +43,25 @@ function spawnRing() {
   }, RING_LIFETIME_MS);
 }
 
+// The visual pop/ring restart itself is rate-limited, independently of the
+// click count — every click still earns a token and gets its own floating
+// "+X" number (see ClickerArea.vue), but re-flashing the circle on every
+// single one of them once click rate climbs past a few per second reads as
+// strobing rather than responsive, and above ~3 flashes/second risks the
+// WCAG general flash threshold (content must not flash more than three
+// times in any one-second window) for photosensitive players. Below this
+// rate every click still visibly pops the circle, same as before.
+const VISUAL_MIN_INTERVAL_MS = 350;
+// -Infinity, not 0: performance.now() is itself 0 at the start of a fresh
+// timeline (e.g. under fake timers in tests), which would make the very
+// first click register as "too soon" against a same-valued 0 baseline.
+let lastVisualAt = -Infinity;
+
 function registerClick(x: number, y: number) {
   emit("click", { x, y });
+  const now = performance.now();
+  if (now - lastVisualAt < VISUAL_MIN_INTERVAL_MS) return;
+  lastVisualAt = now;
   restartPop();
   spawnRing();
 }
