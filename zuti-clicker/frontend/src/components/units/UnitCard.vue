@@ -45,11 +45,14 @@ const btnLabel = computed(() => {
   return `×${props.multiplier}`;
 });
 
-// Tooltip: visible on a pointer hovering anywhere on the card (unchanged),
-// or on focus of the dedicated info button below (keyboard Tab, or a touch
-// tap — tapping a button focuses it, so this is also how touch reveals it;
-// tapping elsewhere blurs it closed, giving touch a natural dismiss with no
-// extra affordance needed).
+// Tooltip: visible on hovering or focusing the dedicated info button —
+// scoped to that button specifically, not the whole card, since the icon is
+// what visually signals "hover/tap here for more" and having the entire row
+// react to hover regardless was confusing (the icon looked decorative if
+// hovering anywhere else already opened it). Keyboard Tab focuses the
+// button directly; a touch tap also focuses it (that's how touch reveals
+// it), and tapping elsewhere blurs it closed, a natural dismiss with no
+// extra affordance needed.
 const hovered = ref(false);
 const focused = ref(false);
 const tooltipVisible = computed(() => hovered.value || focused.value);
@@ -79,7 +82,7 @@ function positionTooltip() {
   tooltipStyle.value = { top: `${rect.bottom + 8}px`, left: `${left}px` };
 }
 
-function onCardEnter() {
+function onInfoEnter() {
   hovered.value = true;
   positionTooltip();
 }
@@ -109,13 +112,7 @@ onUnmounted(() => {
 
 <template>
   <Transition name="unit-appear">
-    <div
-      v-if="visible"
-      class="unit-card"
-      :class="{ affordable }"
-      @mouseenter="onCardEnter"
-      @mouseleave="hovered = false"
-    >
+    <div v-if="visible" class="unit-card" :class="{ affordable }">
       <!-- left: info -->
       <div class="unit-info">
         <div class="unit-name-row">
@@ -126,6 +123,8 @@ onUnmounted(() => {
             class="info-btn"
             :aria-label="t('units.moreInfo')"
             :aria-describedby="tooltipVisible ? tooltipId : undefined"
+            @mouseenter="onInfoEnter"
+            @mouseleave="hovered = false"
             @focus="onInfoFocus"
             @blur="focused = false"
           >

@@ -52,12 +52,22 @@ describe("UnitCard", () => {
       expect(body().find(".tooltip").exists()).toBe(false);
     });
 
-    it("opens on hovering the card (pointer) and closes on mouseleave", async () => {
+    it("opens on hovering the info button (pointer) and closes on mouseleave", async () => {
       const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
-      await wrapper.find(".unit-card").trigger("mouseenter");
+      await wrapper.find(".info-btn").trigger("mouseenter");
       expect(body().find(".tooltip").exists()).toBe(true);
 
-      await wrapper.find(".unit-card").trigger("mouseleave");
+      await wrapper.find(".info-btn").trigger("mouseleave");
+      expect(body().find(".tooltip").exists()).toBe(false);
+    });
+
+    it("regression: hovering elsewhere on the card does not open it — only the info button does", async () => {
+      // The icon is what visually signals "hover/tap here for more"; having
+      // the whole row react to hover regardless made the icon look like
+      // decoration, since the tooltip was already open by the time you
+      // noticed it.
+      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      await wrapper.find(".unit-card").trigger("mouseenter");
       expect(body().find(".tooltip").exists()).toBe(false);
     });
 
@@ -97,7 +107,7 @@ describe("UnitCard", () => {
 
     it("closes on window resize", async () => {
       const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
-      await wrapper.find(".unit-card").trigger("mouseenter");
+      await wrapper.find(".info-btn").trigger("mouseenter");
       expect(body().find(".tooltip").exists()).toBe(true);
 
       window.dispatchEvent(new Event("resize"));
