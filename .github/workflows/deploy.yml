@@ -225,20 +225,43 @@ jobs:
               repo: context.repo.repo,
               run_id: run.id
             });
-            const artifact = artifacts.artifacts.find((a) => a.name === "test-reports");
-            if (!artifact) throw new Error("No test-reports artifact on that run");
+            // report.html/report.ods/summary.md/summary.json each publish as
+            // their own individual, run-number-suffixed artifact (see
+            // ci.yml) rather than one combined "test-reports" bundle.
+            const reportArtifacts = artifacts.artifacts.filter(
+              (a) => a.name.startsWith("report-") || a.name.startsWith("summary-")
+            );
+            if (reportArtifacts.length === 0) throw new Error("No report/summary artifacts on that run");
 
-            const download = await github.rest.actions.downloadArtifact({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              artifact_id: artifact.id,
-              archive_format: "zip"
-            });
             fs.mkdirSync("release-assets/test-reports", { recursive: true });
-            fs.writeFileSync("test-reports.zip", Buffer.from(download.data));
-            execSync("unzip -o test-reports.zip -d release-assets/test-reports");
+            for (const artifact of reportArtifacts) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: "zip"
+              });
+              const buffer = Buffer.from(download.data);
+              const destPath = `release-assets/test-reports/${artifact.name}`;
+              // Whether the download API still wraps a direct/unzipped
+              // artifact (see upload-artifact's `archive: false`) in a zip
+              // container isn't documented either way - try extracting it
+              // as one, and if that's not actually a zip, fall back to
+              // writing the downloaded bytes as the file directly.
+              const tmpZip = `_download_${artifact.id}.zip`;
+              fs.writeFileSync(tmpZip, buffer);
+              try {
+                execSync(`unzip -o "${tmpZip}" -d release-assets/test-reports`, { stdio: "pipe" });
+              } catch {
+                fs.writeFileSync(destPath, buffer);
+              } finally {
+                fs.rmSync(tmpZip);
+              }
+            }
 
-            const summary = fs.readFileSync("release-assets/test-reports/summary.md", "utf-8");
+            const summaryFile = reportArtifacts.find((a) => a.name.startsWith("summary-") && a.name.endsWith(".md"));
+            if (!summaryFile) throw new Error("summary.md artifact not found among the CI run's report artifacts");
+            const summary = fs.readFileSync(`release-assets/test-reports/${summaryFile.name}`, "utf-8");
             core.setOutput("found", "true");
             core.setOutput("summary", summary);
 
