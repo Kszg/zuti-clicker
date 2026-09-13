@@ -104,6 +104,13 @@ describe("settingsStore", () => {
       await nextTick();
       expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     });
+
+    it("the language watcher sets the document's lang attribute (was left empty)", async () => {
+      const settings = useSettingsStore();
+      settings.setLanguage("hu");
+      await nextTick();
+      expect(document.documentElement.lang).toBe("hu");
+    });
   });
 
   describe("server sync", () => {

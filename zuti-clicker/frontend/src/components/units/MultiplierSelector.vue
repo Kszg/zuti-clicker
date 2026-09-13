@@ -21,6 +21,7 @@ function label(m: Multiplier): string {
       :key="opt"
       class="mult-btn"
       :class="{ active: modelValue === opt }"
+      :aria-pressed="modelValue === opt"
       @click="emit('update:modelValue', opt)"
     >
       {{ label(opt) }}

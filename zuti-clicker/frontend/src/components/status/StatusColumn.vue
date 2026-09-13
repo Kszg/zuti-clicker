@@ -101,7 +101,10 @@ const runStats = computed(() => [
   font-variant-numeric: tabular-nums;
   letter-spacing: -1px;
   line-height: 1.1;
-  animation: countUp 0.15s ease;
+  /* No countUp animation here: a CSS `animation` plays once at element
+     creation, but this element is created once at app boot (before any
+     tokens are earned) and never remounts — the animation could never
+     actually play in response to the token count changing. */
 }
 
 .token-label {

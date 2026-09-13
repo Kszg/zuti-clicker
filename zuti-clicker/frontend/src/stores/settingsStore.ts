@@ -147,6 +147,7 @@ export const useSettingsStore = defineStore("settings", () => {
   watch(theme, (t) => document.documentElement.setAttribute("data-theme", t), { immediate: true });
   watch(language, (l) => {
     i18n.global.locale.value = l;
+    document.documentElement.lang = l; // was left at index.html's empty default
   }, { immediate: true });
 
   // A pending debounced push must not survive a logout: on a shared browser,
