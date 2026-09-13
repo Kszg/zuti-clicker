@@ -76,6 +76,7 @@ export default {
     saveFailed: "Nem sikerült menteni a beállításokat — ezen az eszközön elmentve"
   },
   auth: {
+    modalAriaLabel: "Bejelentkezés vagy fiók létrehozása",
     loginTab: "Bejelentkezés",
     registerTab: "Regisztráció",
     emailLabel: "E-mail",

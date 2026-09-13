@@ -65,7 +65,7 @@ describe("SettingsModal", () => {
     const ui = useUiStore();
     const body = new DOMWrapper(document.body);
 
-    await body.find(".modal-backdrop").trigger("click");
+    await body.find(".base-modal-backdrop").trigger("click");
     expect(ui.settingsModalOpen).toBe(true);
   });
 

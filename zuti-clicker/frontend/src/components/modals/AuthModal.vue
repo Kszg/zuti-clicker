@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/authStore";
 import { useUiStore } from "@/stores/uiStore";
 import { ApiError } from "@/lib/api";
+import BaseModal from "./BaseModal.vue";
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -45,93 +46,72 @@ async function submit() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="ui.authModalOpen" class="modal-backdrop" @click.self="close">
-      <div class="modal" role="dialog" aria-modal="true">
-        <button class="modal-close" @click="close" aria-label="Close">✕</button>
+  <BaseModal
+    :open="ui.authModalOpen"
+    :aria-label="t('auth.modalAriaLabel')"
+    :max-width="400"
+    :z-index="1000"
+    @close="close"
+  >
+    <button class="modal-close" @click="close" aria-label="Close">✕</button>
 
-        <div class="modal-tabs">
-          <button
-            :class="['tab-btn', { active: tab === 'login' }]"
-            @click="switchTab('login')"
-          >{{ t("auth.loginTab") }}</button>
-          <button
-            :class="['tab-btn', { active: tab === 'register' }]"
-            @click="switchTab('register')"
-          >{{ t("auth.registerTab") }}</button>
-        </div>
-
-        <form class="modal-form" @submit.prevent="submit">
-          <div v-if="tab === 'register'" class="form-group">
-            <label>{{ t("auth.usernameLabel") }}</label>
-            <input
-              v-model="username"
-              type="text"
-              autocomplete="username"
-              required
-              :placeholder="t('auth.usernameLabel')"
-            />
-          </div>
-          <div class="form-group">
-            <label>{{ t("auth.emailLabel") }}</label>
-            <input
-              v-model="email"
-              type="email"
-              autocomplete="email"
-              required
-              :placeholder="t('auth.emailLabel')"
-            />
-          </div>
-          <div class="form-group">
-            <label>{{ t("auth.passwordLabel") }}</label>
-            <input
-              v-model="password"
-              type="password"
-              :autocomplete="tab === 'login' ? 'current-password' : 'new-password'"
-              required
-              :placeholder="t('auth.passwordLabel')"
-            />
-          </div>
-
-          <p v-if="error" class="error-msg">{{ error }}</p>
-
-          <button type="submit" class="submit-btn" :disabled="isLoading">
-            {{ isLoading ? "…" : tab === "login" ? t("auth.loginBtn") : t("auth.registerBtn") }}
-          </button>
-        </form>
-
-        <button class="switch-btn" @click="switchTab(tab === 'login' ? 'register' : 'login')">
-          {{ tab === "login" ? t("auth.switchToRegister") : t("auth.switchToLogin") }}
-        </button>
-      </div>
+    <div class="modal-tabs">
+      <button
+        :class="['tab-btn', { active: tab === 'login' }]"
+        @click="switchTab('login')"
+      >{{ t("auth.loginTab") }}</button>
+      <button
+        :class="['tab-btn', { active: tab === 'register' }]"
+        @click="switchTab('register')"
+      >{{ t("auth.registerTab") }}</button>
     </div>
-  </Teleport>
+
+    <form class="modal-form" @submit.prevent="submit">
+      <div v-if="tab === 'register'" class="form-group">
+        <label>{{ t("auth.usernameLabel") }}</label>
+        <input
+          v-model="username"
+          type="text"
+          autocomplete="username"
+          required
+          :placeholder="t('auth.usernameLabel')"
+        />
+      </div>
+      <div class="form-group">
+        <label>{{ t("auth.emailLabel") }}</label>
+        <input
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          required
+          :placeholder="t('auth.emailLabel')"
+        />
+      </div>
+      <div class="form-group">
+        <label>{{ t("auth.passwordLabel") }}</label>
+        <input
+          v-model="password"
+          type="password"
+          :autocomplete="tab === 'login' ? 'current-password' : 'new-password'"
+          required
+          :placeholder="t('auth.passwordLabel')"
+        />
+      </div>
+
+      <p v-if="error" class="error-msg">{{ error }}</p>
+
+      <button type="submit" class="submit-btn" :disabled="isLoading">
+        {{ isLoading ? "…" : tab === "login" ? t("auth.loginBtn") : t("auth.registerBtn") }}
+      </button>
+    </form>
+
+    <button class="switch-btn" @click="switchTab(tab === 'login' ? 'register' : 'login')">
+      {{ tab === "login" ? t("auth.switchToRegister") : t("auth.switchToLogin") }}
+    </button>
+  </BaseModal>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 180ms ease;
-}
-
-.modal {
-  position: relative;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 28px 32px 24px;
-  width: 100%;
-  max-width: 400px;
-  animation: fadeScaleIn 200ms ease;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
 .modal-close {
   position: absolute;
   top: 12px;
@@ -194,7 +174,7 @@ async function submit() {
 
 .error-msg {
   font-size: 12px;
-  color: #f87171;
+  color: var(--danger);
   background: rgba(248, 113, 113, 0.1);
   border: 1px solid rgba(248, 113, 113, 0.25);
   border-radius: var(--radius-xs);

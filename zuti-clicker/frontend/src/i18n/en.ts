@@ -76,6 +76,7 @@ export default {
     saveFailed: "Couldn't save settings — they're saved on this device"
   },
   auth: {
+    modalAriaLabel: "Log in or create an account",
     loginTab: "Log in",
     registerTab: "Register",
     emailLabel: "Email",

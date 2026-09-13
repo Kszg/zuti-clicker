@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from "vue";
+import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useSettingsStore, type SettingsSnapshot } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useToastStore } from "@/stores/toastStore";
 import { AUTOSAVE_INTERVAL_OPTIONS } from "@/utils/gameConstants";
 import { THEMES, LANGUAGES, CEREMONIES } from "@/utils/settingsSchema";
+import BaseModal from "./BaseModal.vue";
 
 const { t } = useI18n();
 const settings = useSettingsStore();
@@ -17,28 +18,18 @@ function intervalKey(opt: (typeof AUTOSAVE_INTERVAL_OPTIONS)[number]) {
 }
 
 // Live preview stays (theme/language apply as you click), but a change is
-// only committed to the server on "Done" — Cancel/Esc restores whatever was
-// in effect when the modal opened.
+// only committed to the server on "Done" — Cancel/Esc (BaseModal emits
+// "close" for both, since it doesn't distinguish backdrop-driven dismissal
+// from Escape here) restores whatever was in effect when the modal opened.
 const openSnapshot = ref<SettingsSnapshot | null>(null);
 const saving = ref(false);
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === "Escape") handleCancel();
-}
 
 watch(
   () => ui.settingsModalOpen,
   (open) => {
-    if (open) {
-      openSnapshot.value = settings.snapshot();
-      window.addEventListener("keydown", onKeydown);
-    } else {
-      window.removeEventListener("keydown", onKeydown);
-    }
+    if (open) openSnapshot.value = settings.snapshot();
   }
 );
-
-onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 function close() {
   ui.settingsModalOpen = false;
@@ -68,145 +59,116 @@ async function handleDone() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="ui.settingsModalOpen" class="modal-backdrop">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
-        <h2 id="settings-modal-title" class="modal-title">{{ t("settings.title") }}</h2>
+  <BaseModal
+    :open="ui.settingsModalOpen"
+    :title="t('settings.title')"
+    :max-width="420"
+    :z-index="1000"
+    :dismiss-on-backdrop="false"
+    @close="handleCancel"
+  >
+    <div class="section">
+      <span class="section-label">{{ t("settings.appearance") }}</span>
 
-        <div class="section">
-          <span class="section-label">{{ t("settings.appearance") }}</span>
-
-          <div class="field-row">
-            <span class="field-label">{{ t("settings.theme") }}</span>
-            <div class="seg-group" role="group">
-              <button
-                v-for="opt in THEMES"
-                :key="opt"
-                class="seg-btn"
-                :class="{ active: settings.theme === opt }"
-                :aria-pressed="settings.theme === opt"
-                @click="settings.theme = opt"
-              >
-                {{ opt === "dark" ? t("settings.themeDark") : t("settings.themeLight") }}
-              </button>
-            </div>
-          </div>
-
-          <div class="field-row">
-            <span class="field-label">{{ t("settings.language") }}</span>
-            <div class="seg-group" role="group">
-              <button
-                v-for="opt in LANGUAGES"
-                :key="opt"
-                class="seg-btn"
-                :class="{ active: settings.language === opt }"
-                :aria-pressed="settings.language === opt"
-                @click="settings.setLanguage(opt)"
-              >
-                {{ opt.toUpperCase() }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <span class="section-label">{{ t("settings.game") }}</span>
-
-          <div class="field-row">
-            <span class="field-label">{{ t("settings.ceremonyLabel") }}</span>
-            <div class="seg-group" role="group">
-              <button
-                v-for="opt in CEREMONIES"
-                :key="opt"
-                class="seg-btn"
-                :class="{ active: settings.prestigeCeremony === opt }"
-                :aria-pressed="settings.prestigeCeremony === opt"
-                @click="settings.setPrestigeCeremony(opt)"
-              >
-                {{ opt === "full" ? t("settings.ceremonyFull") : t("settings.ceremonyBrief") }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <span class="section-label">{{ t("settings.saving") }}</span>
-
-          <div class="field-row">
-            <span class="field-label">{{ t("settings.autosave") }}</span>
-            <button
-              class="toggle-btn"
-              :class="{ active: settings.autosaveEnabled }"
-              :aria-pressed="settings.autosaveEnabled"
-              @click="settings.autosaveEnabled = !settings.autosaveEnabled"
-            >
-              {{ settings.autosaveEnabled ? "✓" : "✗" }}
-            </button>
-          </div>
-
-          <div v-if="settings.autosaveEnabled" class="field-row">
-            <span class="field-label">{{ t("settings.autosaveInterval") }}</span>
-            <div class="seg-group" role="group">
-              <button
-                v-for="opt in AUTOSAVE_INTERVAL_OPTIONS"
-                :key="opt"
-                class="seg-btn"
-                :class="{ active: settings.autosaveIntervalSecs === opt }"
-                :aria-pressed="settings.autosaveIntervalSecs === opt"
-                @click="settings.autosaveIntervalSecs = opt"
-              >
-                {{ t(intervalKey(opt)) }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-cancel" :disabled="saving" @click="handleCancel">
-            {{ t("settings.cancelBtn") }}
+      <div class="field-row">
+        <span class="field-label">{{ t("settings.theme") }}</span>
+        <div class="seg-group" role="group">
+          <button
+            v-for="opt in THEMES"
+            :key="opt"
+            class="seg-btn"
+            :class="{ active: settings.theme === opt }"
+            :aria-pressed="settings.theme === opt"
+            @click="settings.theme = opt"
+          >
+            {{ opt === "dark" ? t("settings.themeDark") : t("settings.themeLight") }}
           </button>
-          <button class="btn-close" :disabled="saving" @click="handleDone">
-            {{ t("settings.closeBtn") }}
+        </div>
+      </div>
+
+      <div class="field-row">
+        <span class="field-label">{{ t("settings.language") }}</span>
+        <div class="seg-group" role="group">
+          <button
+            v-for="opt in LANGUAGES"
+            :key="opt"
+            class="seg-btn"
+            :class="{ active: settings.language === opt }"
+            :aria-pressed="settings.language === opt"
+            @click="settings.setLanguage(opt)"
+          >
+            {{ opt.toUpperCase() }}
           </button>
         </div>
       </div>
     </div>
-  </Teleport>
+
+    <div class="section">
+      <span class="section-label">{{ t("settings.game") }}</span>
+
+      <div class="field-row">
+        <span class="field-label">{{ t("settings.ceremonyLabel") }}</span>
+        <div class="seg-group" role="group">
+          <button
+            v-for="opt in CEREMONIES"
+            :key="opt"
+            class="seg-btn"
+            :class="{ active: settings.prestigeCeremony === opt }"
+            :aria-pressed="settings.prestigeCeremony === opt"
+            @click="settings.setPrestigeCeremony(opt)"
+          >
+            {{ opt === "full" ? t("settings.ceremonyFull") : t("settings.ceremonyBrief") }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <span class="section-label">{{ t("settings.saving") }}</span>
+
+      <div class="field-row">
+        <span class="field-label">{{ t("settings.autosave") }}</span>
+        <button
+          class="toggle-btn"
+          :class="{ active: settings.autosaveEnabled }"
+          :aria-pressed="settings.autosaveEnabled"
+          @click="settings.autosaveEnabled = !settings.autosaveEnabled"
+        >
+          {{ settings.autosaveEnabled ? "✓" : "✗" }}
+        </button>
+      </div>
+
+      <div v-if="settings.autosaveEnabled" class="field-row">
+        <span class="field-label">{{ t("settings.autosaveInterval") }}</span>
+        <div class="seg-group" role="group">
+          <button
+            v-for="opt in AUTOSAVE_INTERVAL_OPTIONS"
+            :key="opt"
+            class="seg-btn"
+            :class="{ active: settings.autosaveIntervalSecs === opt }"
+            :aria-pressed="settings.autosaveIntervalSecs === opt"
+            @click="settings.autosaveIntervalSecs = opt"
+          >
+            {{ t(intervalKey(opt)) }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <template #actions>
+      <div class="modal-actions">
+        <button class="btn-cancel" :disabled="saving" @click="handleCancel">
+          {{ t("settings.cancelBtn") }}
+        </button>
+        <button class="btn-close" :disabled="saving" @click="handleDone">
+          {{ t("settings.closeBtn") }}
+        </button>
+      </div>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 1000;
-  animation: fadeIn 180ms ease;
-}
-
-.modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 28px 32px 24px;
-  width: 100%;
-  max-width: 420px;
-  max-height: 100%;
-  overflow-y: auto;
-  animation: fadeScaleIn 200ms ease;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-.modal-title {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 18px;
-}
-
 .section {
   margin-bottom: 18px;
 }

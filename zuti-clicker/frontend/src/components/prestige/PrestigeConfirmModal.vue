@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { usePrestige } from "@/composables/usePrestige";
 import { getProductionMultiplier, getCostMultiplier } from "@/utils/prestige";
 import { formatPercent } from "@/utils/formatters";
+import BaseModal from "@/components/modals/BaseModal.vue";
 
 const { t } = useI18n();
 const game = useGameStore();
@@ -29,71 +30,45 @@ const costAfter = computed(
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="modal-backdrop" @click.self="cancelPrestige">
-      <div class="modal" role="alertdialog" aria-modal="true">
-        <h2 class="modal-title">{{ t("confirm.prestigeTitle") }}</h2>
+  <BaseModal
+    :open="true"
+    role="alertdialog"
+    :title="t('confirm.prestigeTitle')"
+    :max-width="400"
+    :z-index="1100"
+    @close="cancelPrestige"
+  >
+    <p class="gain-line">{{ t("confirm.prestigeGain", { gain: game.phdGain }) }}</p>
 
-        <p class="gain-line">{{ t("confirm.prestigeGain", { gain: game.phdGain }) }}</p>
-
-        <div class="mult-table">
-          <div class="mult-row">
-            <span class="mult-label">{{ t("prestige.production") }}</span>
-            <span class="mult-value">{{ productionBefore }} → {{ productionAfter }}</span>
-          </div>
-          <div class="mult-row">
-            <span class="mult-label">{{ t("prestige.costDiscount") }}</span>
-            <span class="mult-value">{{ costBefore }} → {{ costAfter }}</span>
-          </div>
-        </div>
-
-        <p class="modal-body">{{ t("confirm.prestigeLose") }}</p>
-
-        <p v-if="!auth.isLoggedIn" class="guest-warning">
-          {{ t("confirm.prestigeGuestWarning") }}
-        </p>
-
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="cancelPrestige">{{ t("confirm.cancelBtn") }}</button>
-          <button class="btn-confirm" @click="confirmPrestige">
-            {{ t("confirm.prestigeConfirmBtn") }}
-          </button>
-        </div>
+    <div class="mult-table">
+      <div class="mult-row">
+        <span class="mult-label">{{ t("prestige.production") }}</span>
+        <span class="mult-value">{{ productionBefore }} → {{ productionAfter }}</span>
+      </div>
+      <div class="mult-row">
+        <span class="mult-label">{{ t("prestige.costDiscount") }}</span>
+        <span class="mult-value">{{ costBefore }} → {{ costAfter }}</span>
       </div>
     </div>
-  </Teleport>
+
+    <p class="modal-body">{{ t("confirm.prestigeLose") }}</p>
+
+    <p v-if="!auth.isLoggedIn" class="guest-warning">
+      {{ t("confirm.prestigeGuestWarning") }}
+    </p>
+
+    <template #actions>
+      <div class="modal-actions">
+        <button class="btn-cancel" @click="cancelPrestige">{{ t("confirm.cancelBtn") }}</button>
+        <button class="btn-confirm" @click="confirmPrestige">
+          {{ t("confirm.prestigeConfirmBtn") }}
+        </button>
+      </div>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  animation: fadeIn 180ms ease;
-}
-
-.modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 28px 32px 24px;
-  width: 100%;
-  max-width: 400px;
-  animation: fadeScaleIn 200ms ease;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-.modal-title {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-}
-
 .gain-line {
   font-size: 14px;
   font-weight: 700;
