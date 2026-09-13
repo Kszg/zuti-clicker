@@ -200,7 +200,6 @@ jobs:
         with:
           script: |
             const fs = require("fs");
-            const { execSync } = require("child_process");
 
             const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner: context.repo.owner,
@@ -241,22 +240,16 @@ jobs:
                 artifact_id: artifact.id,
                 archive_format: "zip"
               });
-              const buffer = Buffer.from(download.data);
-              const destPath = `release-assets/test-reports/${artifact.name}`;
-              // Whether the download API still wraps a direct/unzipped
-              // artifact (see upload-artifact's `archive: false`) in a zip
-              // container isn't documented either way - try extracting it
-              // as one, and if that's not actually a zip, fall back to
-              // writing the downloaded bytes as the file directly.
-              const tmpZip = `_download_${artifact.id}.zip`;
-              fs.writeFileSync(tmpZip, buffer);
-              try {
-                execSync(`unzip -o "${tmpZip}" -d release-assets/test-reports`, { stdio: "pipe" });
-              } catch {
-                fs.writeFileSync(destPath, buffer);
-              } finally {
-                fs.rmSync(tmpZip);
-              }
+              // Verified empirically (fetched a direct/unzipped artifact's
+              // raw bytes and ran `file` on them): despite the endpoint
+              // name, archive: false uploads come back completely
+              // unwrapped - report.ods's own bytes ARE the file, not a zip
+              // containing it. Unzipping unconditionally would "succeed" on
+              // report.ods specifically (it's an OpenDocument file, which is
+              // itself a valid zip container) and explode it into its
+              // internal content.xml/styles.xml instead of preserving it,
+              // so just write the downloaded bytes out directly.
+              fs.writeFileSync(`release-assets/test-reports/${artifact.name}`, Buffer.from(download.data));
             }
 
             const summaryFile = reportArtifacts.find((a) => a.name.startsWith("summary-") && a.name.endsWith(".md"));
