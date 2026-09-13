@@ -1,14 +1,11 @@
-# 2025-26-ikt-4
+# Zuti Clicker
 
-A 2025-26-os tanév negyedik IKT projektje.
+<div align="center">
 
-## Dokumentációk
+[![Build, Release & Deploy](https://github.com/vb2007/zuti-clicker/actions/workflows/deploy.yml/badge.svg)](https://github.com/vb2007/zuti-clicker/actions/workflows/deploy.yml) [![PR Tests](https://github.com/vb2007/zuti-clicker/actions/workflows/ci.yml/badge.svg)](https://github.com/vb2007/zuti-clicker/actions/workflows/ci.yml)
 
-- [Tervezési dokumentáció](docs/planning.md)
-- [Tervezési prezentáció forgatókönyve](docs/script.md)
+</div>
 
-## Külső linkek
+---
 
-- [Trello](https://trello.com/b/T8YGuxUK/2025-26-ikt-4)
-- [Figma (FOLYAMATBAN)](https://figma.com/)
-- [Tervezési prezentáció (Google Drive)](https://docs.google.com/presentation/d/1LfSWZCDazs0SDHvU4u23IOzEawfEu-hq/edit?usp=sharing&ouid=117491931324179961762&rtpof=true&sd=true)
+Browser clicker / idle game for the winners of the digital era.
