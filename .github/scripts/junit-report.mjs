@@ -77,13 +77,14 @@ function findXmlFiles(dir) {
 
 function stageNameFor(xmlPath) {
   // Each stage now uploads as its own direct (unzipped) artifact named
-  // junit-<stage>.xml (see ci.yml), rather than all three sharing the name
-  // junit.xml nested under a junit-<stage>/ directory - so prefer deriving
-  // the stage from the filename itself. Falls back to the old
+  // junit-<stage>-<run_number>.xml (see ci.yml), rather than all three
+  // sharing the name junit.xml nested under a junit-<stage>/ directory - so
+  // prefer deriving the stage from the filename itself, stripping both the
+  // junit- prefix and the trailing -<run_number>. Falls back to the old
   // directory-based convention too, in case download-artifact ever nests a
   // direct artifact under a subdirectory named after it.
   const base = basename(xmlPath, ".xml");
-  if (base.startsWith("junit-")) return base.slice("junit-".length);
+  if (base.startsWith("junit-")) return base.slice("junit-".length).replace(/-\d+$/, "");
   const dir = basename(dirname(xmlPath));
   return dir.replace(/^junit-/, "") || base;
 }
