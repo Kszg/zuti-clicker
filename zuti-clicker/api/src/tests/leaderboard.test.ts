@@ -5,15 +5,17 @@ import { Responses } from "../constants/responses.js";
 
 const api = request(TestData.BASE_URL);
 
+// Logs in with the given credentials and returns the session cookie.
+async function login(email: string, password: string): Promise<string> {
+  const res = await api.post("/auth/login").send({ email, password });
+  return (res.headers["set-cookie"] as unknown as string[])[0].split(";")[0];
+}
+
 // Registers a fresh test user, logs in, and returns their session cookie.
 async function registerAndLogin(): Promise<string> {
   const user = TestData.generateUser();
   await api.post("/auth/register").send(user);
-  const loginRes = await api
-    .post("/auth/login")
-    .send({ email: user.email, password: user.password });
-  const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
-  return rawHeader.split(";")[0];
+  return login(user.email, user.password);
 }
 
 // Values far larger than anything any other test file writes (the largest
@@ -52,6 +54,15 @@ describe("Leaderboard endpoint - validation", () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe(Responses.LEADERBOARD.INVALID_METRIC.body.error);
   });
+
+  it.each(["toString", "constructor", "hasOwnProperty", "valueOf"])(
+    "regression: rejects an inherited Object.prototype key (%s) as a metric with 400, not 500",
+    async (metric) => {
+      const res = await api.get(`/leaderboard?metric=${metric}`).set("Cookie", cookie);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe(Responses.LEADERBOARD.INVALID_METRIC.body.error);
+    }
+  );
 
   it("rejects limit=0", async () => {
     const res = await api.get("/leaderboard?limit=0").set("Cookie", cookie);
@@ -104,10 +115,6 @@ describe("Leaderboard endpoint - ranking", () => {
     await api.post("/auth/register").send(userB);
     await api.post("/auth/register").send(userC);
 
-    const login = async (email: string, password: string) => {
-      const res = await api.post("/auth/login").send({ email, password });
-      return (res.headers["set-cookie"] as unknown as string[])[0].split(";")[0];
-    };
     cookieA = await login(userA.email, userA.password);
     cookieB = await login(userB.email, userB.password);
     cookieC = await login(userC.email, userC.password);
@@ -198,10 +205,6 @@ describe("Leaderboard endpoint - tie-break", () => {
     await api.post("/auth/register").send(first);
     await api.post("/auth/register").send(second);
 
-    const login = async (email: string, password: string) => {
-      const res = await api.post("/auth/login").send({ email, password });
-      return (res.headers["set-cookie"] as unknown as string[])[0].split(";")[0];
-    };
     const firstCookie = await login(first.email, first.password);
     const secondCookie = await login(second.email, second.password);
 
@@ -236,10 +239,6 @@ describe("Leaderboard endpoint - opt-out", () => {
     await api.post("/auth/register").send(visible);
     await api.post("/auth/register").send(hidden);
 
-    const login = async (email: string, password: string) => {
-      const res = await api.post("/auth/login").send({ email, password });
-      return (res.headers["set-cookie"] as unknown as string[])[0].split(";")[0];
-    };
     const visibleCookie = await login(visible.email, visible.password);
     const hiddenCookie = await login(hidden.email, hidden.password);
 

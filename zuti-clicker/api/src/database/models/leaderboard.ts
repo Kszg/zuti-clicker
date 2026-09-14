@@ -22,7 +22,10 @@ const VISIBLE_FILTER: Prisma.GameSaveWhereInput = {
   user: { OR: [{ settings: null }, { settings: { hideFromLeaderboards: false } }] }
 };
 
-export async function getTopEntries(field: LeaderboardField, limit: number): Promise<LeaderboardEntry[]> {
+export async function getTopEntries(
+  field: LeaderboardField,
+  limit: number
+): Promise<LeaderboardEntry[]> {
   const rows = await prisma.gameSave.findMany({
     where: VISIBLE_FILTER,
     // Tie-break on userId so ties (e.g. two players both at 0) sort the same
@@ -58,22 +61,21 @@ export async function getViewerStanding(
     ((row["user"] as { settings: { hideFromLeaderboards: boolean } | null }).settings
       ?.hideFromLeaderboards ?? false) === true;
 
-  // Rank = 1 + (players strictly ahead) + (players tied, but ordered before
-  // this one by the same userId tie-break getTopEntries uses) — computed
-  // among visible players only, regardless of whether the viewer themself is
-  // hidden, so a hidden player still learns where they'd stand.
-  const [greater, tiedBefore] = await Promise.all([
-    prisma.gameSave.count({
-      where: { ...VISIBLE_FILTER, [field]: { gt: value } } as Prisma.GameSaveWhereInput
-    }),
-    prisma.gameSave.count({
-      where: {
-        ...VISIBLE_FILTER,
-        [field]: { equals: value },
-        userId: { lt: userId }
-      } as Prisma.GameSaveWhereInput
-    })
-  ]);
+  // Rank = 1 + (players strictly ahead, OR tied but ordered before this one
+  // by the same userId tie-break getTopEntries uses) — computed among
+  // visible players only, regardless of whether the viewer themself is
+  // hidden, so a hidden player still learns where they'd stand. The two
+  // conditions are mutually exclusive, so a single count with OR replaces
+  // what would otherwise be two separate count queries.
+  const ahead = await prisma.gameSave.count({
+    where: {
+      ...VISIBLE_FILTER,
+      OR: [
+        { [field]: { gt: value } },
+        { [field]: { equals: value }, userId: { lt: userId } }
+      ]
+    } as Prisma.GameSaveWhereInput
+  });
 
-  return { rank: greater + tiedBefore + 1, value, hidden };
+  return { rank: ahead + 1, value, hidden };
 }
