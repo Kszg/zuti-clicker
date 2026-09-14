@@ -237,17 +237,18 @@ Két GitHub Actions workflow fut a self-hosted runneren (`vbServer`, bare metal,
 
 ### `ci.yml` – tesztek PR-en
 
-Minden `main`-re nyíló pull request-en lefut, három egymástól független jobban (egyetlen runner miatt sorban futnak, de a State külön látszik):
+Minden `main`-re nyíló pull request-en lefut, négy jobban. Három közülük (`typecheck`, `verify-migrations`, `frontend-tests`) egymástól független (egyetlen runner miatt sorban futnak, de a State külön látszik); az `api-tests` a `verify-migrations`-tól függ, hogy már migrált, ellenőrzött adatbázison fusson:
 
 | Job | Mit ellenőriz |
 |---|---|
 | `typecheck` | `api`: `tsc --noEmit` · `frontend`: `vue-tsc --build` |
+| `verify-migrations` | `prisma migrate deploy` + `prisma migrate diff --exit-code` a dedikált `zutiClickerTest` adatbázis ellen — a merge előtti bizonyíték arra, hogy egy migráció nemcsak létezik, hanem helyes is (lásd lent, `deploy.yml`) |
 | `frontend-tests` | Vitest (`src/**/__tests__/*.spec.ts`), szerver/adatbázis nélkül |
-| `api-tests` | Jest, éles szerver a `:2710` porton egy dedikált `zutiClickerTest` adatbázis ellen |
+| `api-tests` | Jest, éles szerver a `:2710` porton ugyanazon `zutiClickerTest` adatbázis ellen — a `verify-migrations`-tól függ, hogy már migrált adatbázison fusson |
 
-Az `api-tests` job egy futtatáshoz kötött, runner-lokális `.env` fájlt vár `/mnt/raid1/zuti-clicker-ci/.env.ci` alatt (sosem GitHub secret) — ez tartalmazza a `zutiClickerTest` / `zutiClickerTestShadow` adatbázisok elérését és egy eldobható `CRYPTO_SECRET_KEY`-t. A teszt lefutása után a job a `cleanup:test-users --apply` scriptet futtatja, hogy a `test_<random>@example.com` felhasználók ne halmozódjanak.
+Az `api-tests` és a `verify-migrations` job egyaránt egy futtatáshoz kötött, runner-lokális `.env` fájlt vár `/mnt/raid1/zuti-clicker-ci/.env.ci` alatt (sosem GitHub secret) — ez tartalmazza a `zutiClickerTest` / `zutiClickerTestShadow` adatbázisok elérését és egy eldobható `CRYPTO_SECRET_KEY`-t. A teszt lefutása után az `api-tests` job a `cleanup:test-users --apply` scriptet futtatja, hogy a `test_<random>@example.com` felhasználók ne halmozódjanak.
 
-Mindhárom job feltölt egy `junit-<stage>` artifactot; egy negyedik (`reports`) job ezekből generálja a `.github/scripts/junit-report.mjs` scripttel a `report.html`, `report.ods` (valódi OpenDocument táblázat, Summary + Tests munkalapokkal) és `summary.md`/`summary.json` fájlokat, `test-reports` artifactként. Az ötödik (`summary`) job publikálja az eredményt:
+Mind a négy job feltölt egy `junit-<stage>` artifactot; egy ötödik (`reports`) job ezekből generálja a `.github/scripts/junit-report.mjs` scripttel a `report.html`, `report.ods` (valódi OpenDocument táblázat, Summary + Tests munkalapokkal) és `summary.md`/`summary.json` fájlokat, `test-reports` artifactként. A hatodik (`summary`) job publikálja az eredményt:
 
 - a futás GitHub Actions job summary-jába,
 - egy "sticky" PR-kommentbe (pusholásonként frissül, nem szaporodik),
@@ -259,10 +260,11 @@ Minden `main`-re kerülő push-on lefut (branch protection miatt ez mindig egy m
 
 1. **version** — beolvassa és összeveti az `api/package.json` és `frontend/package.json` verzióját (a kettőnek meg kell egyeznie — lásd a repo-konvenciót a kézzel duplikált értékekről), és megnézi, létezik-e már `v<version>` tag.
 2. **build-push** — megépíti és pusholja mindkét image-et a GitHub Container Registry-be (`ghcr.io/vb2007/zuti-clicker-api`, `ghcr.io/vb2007/zuti-clicker-frontend`), mindig `sha-<rövid_sha>` és `latest` taggel, új verzió esetén a puszta `<version>` taggel is.
-3. **release** (csak ha a verzió új) — létrehozza a `v<version>` taget és egy GitHub release-t automatikusan generált jegyzetekkel, kiegészítve image digest-ekkel és a mergelt PR CI-futásának teszteredményeivel. Csatolt fájlok: a verzióra rögzített `docker-compose.prod.yml`, egy `images.json` digest-lista, a frontend build tartalma (`.tar.gz`), és a teszt-riport csomag.
-4. **deploy** — csak a `docker-compose.prod.yml`-t szinkronizálja a `/mnt/raid1/zuti-clicker` telepítési könyvtárba (a már ott lévő `.env`-hez soha nem nyúl), lehúzza a sha-hoz rögzített image-eket, és újraindítja a stacket a meglévő healthcheckek megvárásával.
+3. **migrate** — a **build-push**-sal párhuzamosan fut (nem függ az image-ektől), és lefuttatja a `prisma migrate deploy`-t az **éles, production adatbázis** ellen. A hitelesítő adatokat a telepítési könyvtár saját `.env` fájljából olvassa ki (sosem írja) — ugyanabból a fájlból, amit a `docker-compose.prod.yml` is használ `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` néven —, és ezekből építi fel a `DATABASE_URL`-t. `SHADOW_DATABASE_URL` nem szükséges (empirikusan ellenőrizve: a `prisma migrate deploy` enélkül is fut). Mivel a migráció idempotens, ez a job feltétel nélkül, minden `main`-push-on lefut, nem csak új verziónál.
+4. **release** (csak ha a verzió új) — létrehozza a `v<version>` taget és egy GitHub release-t automatikusan generált jegyzetekkel, kiegészítve image digest-ekkel és a mergelt PR CI-futásának teszteredményeivel. Csatolt fájlok: a verzióra rögzített `docker-compose.prod.yml`, egy `images.json` digest-lista, a frontend build tartalma (`.tar.gz`), és a teszt-riport csomag.
+5. **deploy** — csak a `docker-compose.prod.yml`-t szinkronizálja a `/mnt/raid1/zuti-clicker` telepítési könyvtárba (a már ott lévő `.env`-hez soha nem nyúl), lehúzza a sha-hoz rögzített image-eket, és újraindítja a stacket a meglévő healthcheckek megvárásával. Csak akkor fut, ha a **migrate** job is sikeres volt — egy sikertelen migráció blokkolja a deployt (a régi konténerek változatlanul futnak tovább a régi sémán/image-eken).
 
-**Migráció**: a deploy workflow **sosem** futtat `prisma migrate deploy`-t — ez továbbra is kézi, a deploy előtti lépés marad (lásd fent, "Adatbázis migráció").
+**Migráció**: a `migrate` job **automatikusan** lefuttatja a `prisma migrate deploy`-t az éles adatbázis ellen minden `main`-push-on — ez a deploy előtti kézi lépést váltotta fel (lásd fent, "Adatbázis migráció"). Mivel a projektnek nincs külön staging adatbázisa, az egyetlen védőháló az additív-only migrációs szabály, a PR review, és a `ci.yml` `verify-migrations` jobja (lásd fent) — ez utóbbi bizonyítja merge előtt, hogy egy migráció *helyes* (tisztán alkalmazható, és megegyezik a `prisma/schema.prisma` tartalmával), de azt nem tudja kiszűrni, ha egy migráció szintaktikailag helyes, mégis hibás (pl. valódi adatot töröl).
 
 **Verziózás**: egy funkció leszállításakor mindkét `package.json`-ban (api + frontend) egyszerre kell emelni a `version` mezőt — ez a release-mechanizmus egyetlen forrása.
 
