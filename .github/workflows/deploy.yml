@@ -211,6 +211,18 @@ jobs:
           DB_NAME="${parsed[DB_NAME]}"
           SHADOW_DB_NAME="${parsed[SHADOW_DB_NAME]:-zutiClickerShadow}"
 
+          # host.docker.internal only resolves *inside* a container (see
+          # docker-compose.prod.yml's `extra_hosts: host.docker.internal:
+          # host-gateway`) - it lets a container reach its own host machine.
+          # This job runs as a plain process directly on that host machine
+          # (confirmed the hard way: this exact job's second real run got
+          # `P1001: Can't reach database server at host.docker.internal:3306`
+          # before this fix), so the equivalent address from here is the
+          # loopback interface, not that Docker-only alias.
+          if [ "$DB_HOST" = "host.docker.internal" ]; then
+            DB_HOST="127.0.0.1"
+          fi
+
           if [ -z "$DB_HOST" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DB_NAME" ]; then
             echo "::error::$ENV_FILE is missing one of DB_HOST/DB_USER/DB_PASSWORD/DB_NAME - refusing to build a broken DATABASE_URL."
             exit 1
