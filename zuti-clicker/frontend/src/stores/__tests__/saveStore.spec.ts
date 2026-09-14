@@ -47,6 +47,7 @@ describe("saveStore", () => {
         autosaveEnabled: true,
         autosaveIntervalSecs: 30,
         prestigeCeremony: "full",
+        hideFromLeaderboards: false,
         updatedAt: new Date().toISOString()
       }
     });

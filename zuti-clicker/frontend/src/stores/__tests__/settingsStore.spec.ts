@@ -43,6 +43,7 @@ describe("settingsStore", () => {
       expect(settings.autosaveEnabled).toBe(DEFAULT_SETTINGS.autosaveEnabled);
       expect(settings.autosaveIntervalSecs).toBe(DEFAULT_SETTINGS.autosaveIntervalSecs);
       expect(settings.prestigeCeremony).toBe(DEFAULT_SETTINGS.prestigeCeremony);
+      expect(settings.hideFromLeaderboards).toBe(DEFAULT_SETTINGS.hideFromLeaderboards);
     });
 
     it("reads a valid persisted blob", () => {
@@ -53,7 +54,8 @@ describe("settingsStore", () => {
           language: "hu",
           autosaveEnabled: false,
           autosaveIntervalSecs: 300,
-          prestigeCeremony: "brief"
+          prestigeCeremony: "brief",
+          hideFromLeaderboards: true
         })
       );
       const settings = useSettingsStore();
@@ -62,6 +64,7 @@ describe("settingsStore", () => {
       expect(settings.autosaveEnabled).toBe(false);
       expect(settings.autosaveIntervalSecs).toBe(300);
       expect(settings.prestigeCeremony).toBe("brief");
+      expect(settings.hideFromLeaderboards).toBe(true);
     });
 
     it.each([
@@ -70,7 +73,8 @@ describe("settingsStore", () => {
       JSON.stringify({ theme: "purple" }),
       JSON.stringify({ autosaveIntervalSecs: "fast" }),
       JSON.stringify({ autosaveIntervalSecs: 7 }),
-      JSON.stringify({ prestigeCeremony: "loud" })
+      JSON.stringify({ prestigeCeremony: "loud" }),
+      JSON.stringify({ hideFromLeaderboards: "yes" })
     ])("never throws on corrupt/invalid storage content: %s", (raw) => {
       localStorage.setItem(STORAGE_KEY, raw);
       expect(() => useSettingsStore()).not.toThrow();
@@ -88,6 +92,7 @@ describe("settingsStore", () => {
       settings.setPrestigeCeremony("brief");
       settings.autosaveEnabled = false;
       settings.autosaveIntervalSecs = 60;
+      settings.hideFromLeaderboards = true;
       await nextTick();
 
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
@@ -96,6 +101,7 @@ describe("settingsStore", () => {
       expect(stored.prestigeCeremony).toBe("brief");
       expect(stored.autosaveEnabled).toBe(false);
       expect(stored.autosaveIntervalSecs).toBe(60);
+      expect(stored.hideFromLeaderboards).toBe(true);
     });
 
     it("the theme watcher sets the document's data-theme attribute", async () => {
@@ -123,6 +129,7 @@ describe("settingsStore", () => {
           autosaveEnabled: false,
           autosaveIntervalSecs: 300,
           prestigeCeremony: "brief",
+          hideFromLeaderboards: true,
           updatedAt: "2026-01-01T00:00:00.000Z"
         }
       });
@@ -136,6 +143,7 @@ describe("settingsStore", () => {
       expect(settings.autosaveEnabled).toBe(false);
       expect(settings.autosaveIntervalSecs).toBe(300);
       expect(settings.prestigeCeremony).toBe("brief");
+      expect(settings.hideFromLeaderboards).toBe(true);
     });
 
     it("applying a server value does not push it right back (write-back-loop guard)", async () => {
@@ -147,6 +155,7 @@ describe("settingsStore", () => {
           autosaveEnabled: false,
           autosaveIntervalSecs: 300,
           prestigeCeremony: "brief",
+          hideFromLeaderboards: true,
           updatedAt: "2026-01-01T00:00:00.000Z"
         }
       });
@@ -231,6 +240,7 @@ describe("settingsStore", () => {
       settings.setPrestigeCeremony("brief");
       settings.autosaveEnabled = false;
       settings.autosaveIntervalSecs = 300;
+      settings.hideFromLeaderboards = true;
 
       settings.restore(snap);
 
@@ -239,6 +249,7 @@ describe("settingsStore", () => {
       expect(settings.prestigeCeremony).toBe(snap.prestigeCeremony);
       expect(settings.autosaveEnabled).toBe(snap.autosaveEnabled);
       expect(settings.autosaveIntervalSecs).toBe(snap.autosaveIntervalSecs);
+      expect(settings.hideFromLeaderboards).toBe(snap.hideFromLeaderboards);
     });
 
     it("restore() also corrects a stray push that already fired for the abandoned change", async () => {

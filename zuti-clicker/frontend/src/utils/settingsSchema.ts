@@ -7,6 +7,7 @@ export interface PersistedSettings {
   autosaveEnabled: boolean;
   autosaveIntervalSecs: number;
   prestigeCeremony: PrestigeCeremony;
+  hideFromLeaderboards: boolean;
 }
 
 export const DEFAULT_SETTINGS: PersistedSettings = {
@@ -14,7 +15,8 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
   language: "en",
   autosaveEnabled: true,
   autosaveIntervalSecs: DEFAULT_AUTOSAVE_INTERVAL_SECS,
-  prestigeCeremony: "full"
+  prestigeCeremony: "full",
+  hideFromLeaderboards: false
 };
 
 export const THEMES: readonly Theme[] = ["dark", "light"];
@@ -45,6 +47,17 @@ export function sanitizeSettings(raw: unknown): PersistedSettings {
   const prestigeCeremony = CEREMONIES.includes(r["prestigeCeremony"] as PrestigeCeremony)
     ? (r["prestigeCeremony"] as PrestigeCeremony)
     : DEFAULT_SETTINGS.prestigeCeremony;
+  const hideFromLeaderboards =
+    typeof r["hideFromLeaderboards"] === "boolean"
+      ? r["hideFromLeaderboards"]
+      : DEFAULT_SETTINGS.hideFromLeaderboards;
 
-  return { theme, language, autosaveEnabled, autosaveIntervalSecs, prestigeCeremony };
+  return {
+    theme,
+    language,
+    autosaveEnabled,
+    autosaveIntervalSecs,
+    prestigeCeremony,
+    hideFromLeaderboards
+  };
 }

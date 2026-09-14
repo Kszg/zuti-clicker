@@ -1,3 +1,5 @@
+import type { LeaderboardMetric } from "@/types";
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -85,6 +87,7 @@ export interface SettingsPayload {
   autosaveEnabled?: boolean;
   autosaveIntervalSecs?: number;
   prestigeCeremony?: string;
+  hideFromLeaderboards?: boolean;
 }
 export interface SettingsData {
   theme: string;
@@ -92,6 +95,7 @@ export interface SettingsData {
   autosaveEnabled: boolean;
   autosaveIntervalSecs: number;
   prestigeCeremony: string;
+  hideFromLeaderboards: boolean;
   updatedAt: string | null;
 }
 export interface LoadSettingsResponse {
@@ -100,6 +104,22 @@ export interface LoadSettingsResponse {
 export interface StoreSettingsResponse {
   message: string;
   settings: SettingsData;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  value: number;
+}
+export interface LeaderboardViewer {
+  rank: number;
+  value: number;
+  hidden: boolean;
+}
+export interface LeaderboardResponse {
+  metric: LeaderboardMetric;
+  entries: LeaderboardEntry[];
+  viewer: LeaderboardViewer | null;
 }
 
 export const api = {
@@ -119,5 +139,12 @@ export const api = {
   settings: {
     load: () => request<LoadSettingsResponse>("GET", "/settings"),
     store: (payload: SettingsPayload) => request<StoreSettingsResponse>("PUT", "/settings", payload)
+  },
+  leaderboard: {
+    get: (metric: LeaderboardMetric, limit?: number) => {
+      const params = new URLSearchParams({ metric });
+      if (limit !== undefined) params.set("limit", String(limit));
+      return request<LeaderboardResponse>("GET", `/leaderboard?${params.toString()}`);
+    }
   }
 };
