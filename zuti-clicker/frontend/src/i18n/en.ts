@@ -69,6 +69,8 @@ export default {
     saving: "Saving",
     autosave: "Autosave",
     autosaveInterval: "Interval",
+    privacy: "Privacy",
+    hideFromLeaderboards: "Hide me from leaderboards",
     intervals: {
       "15": "15s",
       "30": "30s",
@@ -130,5 +132,20 @@ export default {
     ceremonyGained: "PhD earned",
     ceremonySubtext: "Your research permanently strengthens every future run.",
     continueBtn: "Begin Anew"
+  },
+  leaderboard: {
+    open: "Leaderboards",
+    title: "Leaderboards",
+    metricTokens: "Tokens",
+    metricClicks: "Clicks",
+    metricPhd: "PhDs",
+    metricPlaytime: "Playtime",
+    rank: "Rank",
+    player: "Player",
+    value: "Value",
+    yourRank: "Your rank",
+    hiddenNote: "You're hidden from other players' leaderboards.",
+    empty: "No players on this leaderboard yet.",
+    loadError: "Couldn't load the leaderboard."
   }
 };

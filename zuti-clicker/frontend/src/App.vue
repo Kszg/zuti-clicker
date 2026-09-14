@@ -14,6 +14,7 @@ import AuthModal from "@/components/modals/AuthModal.vue";
 import GuestWarningModal from "@/components/modals/GuestWarningModal.vue";
 import ConfirmModal from "@/components/modals/ConfirmModal.vue";
 import SettingsModal from "@/components/modals/SettingsModal.vue";
+import LeaderboardModal from "@/components/modals/LeaderboardModal.vue";
 import ToastHost from "@/components/layout/ToastHost.vue";
 import PrestigeConfirmModal from "@/components/prestige/PrestigeConfirmModal.vue";
 import PrestigeCeremony from "@/components/prestige/PrestigeCeremony.vue";
@@ -115,6 +116,7 @@ async function onConfirmDelete() {
   <AuthModal />
   <GuestWarningModal />
   <SettingsModal />
+  <LeaderboardModal />
   <ConfirmModal
     v-if="ui.confirmDeleteOpen"
     :title="t('confirm.deleteSaveTitle')"

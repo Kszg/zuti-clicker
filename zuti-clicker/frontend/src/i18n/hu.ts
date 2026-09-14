@@ -69,6 +69,8 @@ export default {
     saving: "Mentés",
     autosave: "Automatikus mentés",
     autosaveInterval: "Gyakoriság",
+    privacy: "Adatvédelem",
+    hideFromLeaderboards: "Elrejtés a ranglistákról",
     intervals: {
       "15": "15s",
       "30": "30s",
@@ -130,5 +132,20 @@ export default {
     ceremonyGained: "Megszerzett PhD",
     ceremonySubtext: "A kutatásod tartósan megerősíti minden jövőbeli menetet.",
     continueBtn: "Új kezdet"
+  },
+  leaderboard: {
+    open: "Ranglisták",
+    title: "Ranglisták",
+    metricTokens: "Tokenek",
+    metricClicks: "Kattintások",
+    metricPhd: "PhD-k",
+    metricPlaytime: "Játékidő",
+    rank: "Helyezés",
+    player: "Játékos",
+    value: "Érték",
+    yourRank: "A te helyezésed",
+    hiddenNote: "El vagy rejtve mások ranglistáiról.",
+    empty: "Még nincs játékos ezen a ranglistán.",
+    loadError: "Nem sikerült betölteni a ranglistát."
   }
 };

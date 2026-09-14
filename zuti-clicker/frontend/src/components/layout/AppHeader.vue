@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useGameStore } from "@/stores/gameStore";
+import { useAuthStore } from "@/stores/authStore";
 import { formatNumber, formatRate } from "@/utils/formatters";
 import SaveBar from "@/components/layout/SaveBar.vue";
 import type { Language } from "@/types";
@@ -12,6 +13,7 @@ const { t } = useI18n();
 const settings = useSettingsStore();
 const ui = useUiStore();
 const game = useGameStore();
+const auth = useAuthStore();
 const { theme, language } = storeToRefs(settings);
 
 function toggleLanguage() {
@@ -41,6 +43,15 @@ function toggleLanguage() {
         :title="t('settings.toggleTheme')"
       >
         <span>{{ theme === "dark" ? "☀️" : "🌙" }}</span>
+      </button>
+
+      <button
+        v-if="auth.isLoggedIn"
+        class="ctrl-btn icon-btn"
+        @click="ui.leaderboardModalOpen = true"
+        :title="t('leaderboard.open')"
+      >
+        <span>🏆</span>
       </button>
 
       <button
