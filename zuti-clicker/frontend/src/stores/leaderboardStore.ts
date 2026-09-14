@@ -10,24 +10,30 @@ export const useLeaderboardStore = defineStore("leaderboard", () => {
   const loading = ref(false);
   const error = ref(false);
 
+  // A monotonic counter rather than comparing against `metric` — two
+  // in-flight fetches for the *same* metric (e.g. the modal closing and
+  // reopening before the first request resolves) would both pass a
+  // metric-equality check, letting whichever response lands last win even
+  // if it isn't the most recently issued request.
+  let requestId = 0;
+
   async function fetch(nextMetric: LeaderboardMetric): Promise<void> {
+    const id = ++requestId;
     metric.value = nextMetric;
     loading.value = true;
     error.value = false;
     try {
       const res = await api.leaderboard.get(nextMetric);
-      // A metric switch that fires a second fetch before the first resolves
-      // must not let the stale response overwrite the newer one's data.
-      if (metric.value !== nextMetric) return;
+      if (id !== requestId) return;
       entries.value = res.entries;
       viewer.value = res.viewer;
     } catch {
-      if (metric.value !== nextMetric) return;
+      if (id !== requestId) return;
       entries.value = [];
       viewer.value = null;
       error.value = true;
     } finally {
-      if (metric.value === nextMetric) loading.value = false;
+      if (id === requestId) loading.value = false;
     }
   }
 

@@ -107,4 +107,35 @@ describe("leaderboardStore", () => {
     expect(store.metric).toBe("clicks");
     expect(store.entries[0]!.username).toBe("bob");
   });
+
+  it("regression: an older same-metric fetch resolving after a newer one does not overwrite it", async () => {
+    // Two in-flight requests for the *same* metric (e.g. the modal closing
+    // and reopening before the first resolves) — a guard that only compares
+    // against the current metric can't tell these apart, since both match.
+    let resolveFirst!: (v: {
+      metric: "tokens";
+      entries: { rank: number; username: string; value: number }[];
+      viewer: null;
+    }) => void;
+    vi.mocked(api.leaderboard.get).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFirst = resolve;
+      }) as ReturnType<typeof api.leaderboard.get>
+    );
+
+    const store = useLeaderboardStore();
+    const firstFetch = store.fetch("tokens");
+
+    vi.mocked(api.leaderboard.get).mockResolvedValueOnce({
+      metric: "tokens",
+      entries: [{ rank: 1, username: "bob", value: 5 }],
+      viewer: null
+    });
+    await store.fetch("tokens");
+
+    resolveFirst({ metric: "tokens", entries: [{ rank: 1, username: "alice", value: 1 }], viewer: null });
+    await firstFetch;
+
+    expect(store.entries[0]!.username).toBe("bob");
+  });
 });
