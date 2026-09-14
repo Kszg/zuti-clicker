@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
 import MultiplierSelector from "./MultiplierSelector.vue";
 import UnitCard from "./UnitCard.vue";
+import SkinCard from "./SkinCard.vue";
 import type { Multiplier } from "@/types";
 
 const { t } = useI18n();
@@ -30,6 +31,8 @@ const multiplier = ref<Multiplier>(1);
     <div class="panel-header">
       <span class="panel-title">{{ t("skin.title") }}</span>
     </div>
+
+    <SkinCard/>
   </aside>
 </template>
 
