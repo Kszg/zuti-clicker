@@ -53,6 +53,9 @@ export default {
       theta: "Dimenziós token-kinyerő."
     }
   },
+  skin: {
+    title: "Kinézetek"
+  },
   settings: {
     toggleTheme: "Téma váltás",
     language: "Nyelv",

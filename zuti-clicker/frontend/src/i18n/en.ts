@@ -53,6 +53,9 @@ export default {
       theta: "Dimensional token extractor."
     }
   },
+  skin: {
+    title: "Skins"
+  },
   settings: {
     toggleTheme: "Toggle theme",
     language: "Language",

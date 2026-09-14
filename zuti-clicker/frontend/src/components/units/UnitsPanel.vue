@@ -26,6 +26,10 @@ const multiplier = ref<Multiplier>(1);
         :multiplier="multiplier"
       />
     </div>
+
+    <div class="panel-header">
+      <span class="panel-title">{{ t("skin.title") }}</span>
+    </div>
   </aside>
 </template>
 
