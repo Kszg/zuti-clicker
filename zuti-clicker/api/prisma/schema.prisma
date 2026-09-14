@@ -46,6 +46,12 @@ model GameSave {
   savedAt           DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   units             UnitSave[]
+
+  // Support ORDER BY ... DESC LIMIT queries for each leaderboard metric.
+  @@index([totalTokensEarned])
+  @@index([totalClicks])
+  @@index([phdCount])
+  @@index([elapsedSeconds])
 }
 
 model UnitSave {
@@ -67,5 +73,6 @@ model UserSettings {
   autosaveEnabled      Boolean  @default(true)
   autosaveIntervalSecs Int      @default(30)
   prestigeCeremony     String   @default("full") @db.VarChar(16)
+  hideFromLeaderboards Boolean  @default(false)
   updatedAt            DateTime @updatedAt
 }
