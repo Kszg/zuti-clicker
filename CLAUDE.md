@@ -54,11 +54,22 @@ comment pointing at the other copy, and update both in the same change.
   as a starting point, then reformat it to match.
 - **New columns must be additive**: `NOT NULL DEFAULT <value>`, never a
   rename/drop/narrowing of something the currently-deployed API still reads
-  or writes. The API has no automated migration-on-deploy step (see
-  `api/Dockerfile` — it only runs `prisma generate`, never
-  `prisma migrate deploy`), so migrations must be applied to the target
-  database **before** a new API image that depends on them goes out, as a
-  manual, separate step.
+  or writes. This is what makes the automated deploy below safe to run
+  unattended: `.github/workflows/deploy.yml`'s `migrate` job runs
+  `prisma migrate deploy` against the **live production database** on every
+  push to `main`, before the `deploy` job swaps in the new images (see
+  "CI/CD" below) — a migration that isn't purely additive/backward-compatible
+  could break the still-running old containers in the window before the
+  image swap, or apply a destructive change with no staging database to
+  catch it first (this project still has none). The only safety nets are
+  this additive-only rule, PR review, and `ci.yml`'s `verify-migrations` job
+  (`prisma migrate deploy` + a `prisma migrate diff` schema-drift check
+  against the dedicated `zutiClickerTest` database) — that job proves a
+  migration is *correct* (applies cleanly, matches `prisma/schema.prisma`)
+  before merge; it cannot catch a migration that's syntactically fine but
+  semantically wrong (e.g. a logically valid `DROP`/data-destructive
+  statement). `api/Dockerfile` itself still never runs
+  `prisma migrate deploy` — the step lives in the workflow, not the image.
 - If an API endpoint's request body gains a new optional field, **omitting
   it must preserve whatever is already stored** — never let an absent field
   reset a column to its default on an update. Only a first-ever row (create
@@ -231,21 +242,29 @@ Two GitHub Actions workflows run on the self-hosted runner (`vbServer`, bare
 metal, no VM/Docker for the runner itself):
 
 - `.github/workflows/ci.yml` — on every PR into `main`: `typecheck` (api
-  `tsc --noEmit` + frontend `vue-tsc --build`), `frontend-tests` (Vitest),
-  and `api-tests` (Jest against a live server + a dedicated `zutiClickerTest`
-  database, never production) run as separate jobs, each uploading a
-  `junit-<stage>` artifact. A `reports` job turns those into
-  `.html`/`.ods`/`.md`/`.json` via `.github/scripts/junit-report.mjs`; a
-  `summary` job publishes the result as a job summary, a sticky PR comment,
-  and inline check-run annotations.
+  `tsc --noEmit` + frontend `vue-tsc --build`), `verify-migrations`
+  (`prisma migrate deploy` + a `prisma migrate diff --exit-code` drift check
+  against the dedicated `zutiClickerTest` database — the pre-merge proof
+  that a migration is correct, not just present), `frontend-tests` (Vitest),
+  and `api-tests` (Jest against a live server + that same `zutiClickerTest`
+  database, never production; depends on `verify-migrations` so it runs
+  against an already-migrated database instead of re-applying migrations
+  itself) run as jobs, each uploading a `junit-<stage>` artifact. A `reports`
+  job turns those into `.html`/`.ods`/`.md`/`.json` via
+  `.github/scripts/junit-report.mjs`; a `summary` job publishes the result as
+  a job summary, a sticky PR comment, and inline check-run annotations.
 - `.github/workflows/deploy.yml` — on every push to `main`: builds and pushes
   both images to GHCR (`sha-<short_sha>` + `latest` always, the bare
   `<version>` when `api/package.json` and `frontend/package.json`'s versions
   have moved past the latest `v*` tag), cuts a GitHub release when that
-  happens, then syncs `docker-compose.prod.yml` into the deploy directory on
-  the host and does `docker compose pull && up -d` — never touching the
-  host's `.env`, and never running `prisma migrate deploy` (migrations stay
-  the manual step described above).
+  happens, runs a `migrate` job that applies pending migrations to the
+  **live production database** (`prisma migrate deploy`, reading — never
+  writing — the deploy directory's own `.env` for DB credentials), then —
+  only if that succeeds — syncs `docker-compose.prod.yml` into the deploy
+  directory on the host and does `docker compose pull && up -d`. A failed
+  migration blocks the deploy entirely (`deploy` requires `migrate` to
+  succeed): the old containers keep running on the old schema/images,
+  nothing swaps. `deploy` itself still never touches the host's `.env`.
 
 Bump both `package.json` versions together when shipping a release-worthy
 change — that comparison is the only source of truth for whether a push cuts
