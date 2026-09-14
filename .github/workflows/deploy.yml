@@ -2,10 +2,14 @@ name: Build, Release & Deploy
 
 # Runs on every push to main (branch protection means that's always a merged,
 # already-CI-tested PR). Builds and pushes both images to GHCR, cuts a
-# GitHub release when the package.json version has changed, then pulls +
-# restarts the compose stack on the self-hosted host (vbServer). Migrations
-# are never run here - see CLAUDE.md "Database & migrations": they stay a
-# deliberate manual step before a deploy that needs them.
+# GitHub release when the package.json version has changed, applies pending
+# database migrations to the LIVE production database, then - only if that
+# succeeded - pulls + restarts the compose stack on the self-hosted host
+# (vbServer). See CLAUDE.md "Database & migrations": this repo has no
+# staging database, so every migration must be additive-only, and
+# ci.yml's `verify-migrations` job (prisma migrate deploy + a schema drift
+# check against the dedicated zutiClickerTest database) is the pre-merge
+# gate that stands in for one.
 on:
   push:
     branches: [main]
@@ -128,6 +132,92 @@ jobs:
           tags: ${{ steps.tags.outputs.fe_tags }}
           build-args: |
             VITE_API_BASE_URL=${{ env.FRONTEND_API_BASE_URL }}
+
+  # ---------------------------------------------------------------------------
+  # Applies pending migrations to the LIVE production database. Runs in
+  # parallel with build-push (it doesn't need the built images - only the
+  # checked-out prisma/migrations/ directory), so it adds no extra latency
+  # to a deploy that doesn't need it. `deploy` below requires this job to
+  # succeed before it swaps any images in - a failed migration blocks the
+  # deploy entirely (fail-closed: the old containers keep running on the old
+  # schema/images, nothing changes).
+  #
+  # `prisma migrate deploy` is idempotent (a no-op if nothing's pending), so
+  # running it unconditionally on every push to main is always safe - this
+  # is deliberately NOT gated on `is_release`, so a migration merged without
+  # (or before) a version bump still gets applied.
+  # ---------------------------------------------------------------------------
+  migrate:
+    name: Apply DB migrations
+    needs: [version]
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: zuti-clicker/api
+        run: pnpm install --frozen-lockfile
+
+      # Reads (never writes) the deploy directory's own .env - the exact
+      # same file docker-compose.prod.yml already uses for
+      # DATABASE_HOST/USER/PASSWORD/NAME (see that file's `environment:`
+      # block) - so there's a single source of truth for prod DB connection
+      # info on this host, and migrating always targets the same database
+      # the app itself is about to connect to. SHADOW_DATABASE_URL is
+      # deliberately not sourced here: `prisma migrate deploy` doesn't use
+      # a shadow database at all (verified empirically - it runs fine with
+      # that var entirely unset), unlike `prisma migrate dev`.
+      - name: Load production database credentials
+        run: |
+          ENV_FILE="${{ env.DEPLOY_DIR }}/.env"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "::error::Missing $ENV_FILE on this runner - expected DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME (see zuti-clicker/.env.example)."
+            exit 1
+          fi
+
+          declare -A parsed
+          while IFS='=' read -r key value; do
+            [ -z "$key" ] && continue
+            case "$key" in \#*) continue ;; esac
+            value="${value%$'\r'}"
+            if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+              value="${value:1:-1}"
+            elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+              value="${value:1:-1}"
+            fi
+            parsed["$key"]="$value"
+          done < "$ENV_FILE"
+
+          DB_HOST="${parsed[DB_HOST]}"
+          DB_PORT="${parsed[DB_PORT]:-3306}"
+          DB_USER="${parsed[DB_USER]}"
+          DB_PASSWORD="${parsed[DB_PASSWORD]}"
+          DB_NAME="${parsed[DB_NAME]}"
+
+          if [ -z "$DB_HOST" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DB_NAME" ]; then
+            echo "::error::$ENV_FILE is missing one of DB_HOST/DB_USER/DB_PASSWORD/DB_NAME - refusing to build a broken DATABASE_URL."
+            exit 1
+          fi
+
+          DATABASE_URL="mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+          echo "::add-mask::${DB_PASSWORD}"
+          echo "::add-mask::${DATABASE_URL}"
+          {
+            echo "DATABASE_URL<<PROD_DB_URL_EOF"
+            echo "$DATABASE_URL"
+            echo "PROD_DB_URL_EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Apply migrations to the production database
+        working-directory: zuti-clicker/api
+        run: pnpm exec prisma migrate deploy
 
   # ---------------------------------------------------------------------------
   # Only when the version changed: tags v<version>, cuts a GitHub release
@@ -311,12 +401,16 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Syncs only docker-compose.prod.yml into the deploy directory (never .env),
-  # then pulls the exact sha-pinned images and restarts the stack.
+  # then pulls the exact sha-pinned images and restarts the stack. Migrations
+  # are already applied by this point (the `migrate` job above) - this job
+  # itself still never touches .env, it only reads the compose file's own
+  # env-var substitution of it at `docker compose` invocation time, same as
+  # before.
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy
-    needs: [version, build-push, release]
-    if: always() && needs.build-push.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped')
+    needs: [version, build-push, release, migrate]
+    if: always() && needs.build-push.result == 'success' && needs.migrate.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped')
     runs-on: [self-hosted, Linux, X64]
     env:
       IMAGE_TAG: sha-${{ needs.version.outputs.short_sha }}
