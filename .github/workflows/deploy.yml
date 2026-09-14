@@ -170,10 +170,19 @@ jobs:
       # DATABASE_HOST/USER/PASSWORD/NAME (see that file's `environment:`
       # block) - so there's a single source of truth for prod DB connection
       # info on this host, and migrating always targets the same database
-      # the app itself is about to connect to. SHADOW_DATABASE_URL is
-      # deliberately not sourced here: `prisma migrate deploy` doesn't use
-      # a shadow database at all (verified empirically - it runs fine with
-      # that var entirely unset), unlike `prisma migrate dev`.
+      # the app itself is about to connect to.
+      #
+      # SHADOW_DATABASE_URL is derived too even though `prisma migrate
+      # deploy` never actually uses a shadow database: prisma.config.ts's
+      # `env("SHADOW_DATABASE_URL")` is resolved eagerly at config-load time
+      # for every Prisma command, and throws PrismaConfigEnvError if it's
+      # unresolvable - confirmed the hard way (this job's first real run
+      # failed here) after an earlier local test of "SHADOW_DATABASE_URL
+      # entirely unset" turned out to have a confound: a leftover real .env
+      # file in the working directory let dotenv silently repopulate it,
+      # masking the failure that only shows up with no .env file at all
+      # (exactly this job's situation). The value itself is never used by
+      # `migrate deploy`, but it still has to resolve to something.
       - name: Load production database credentials
         run: |
           ENV_FILE="${{ env.DEPLOY_DIR }}/.env"
@@ -200,6 +209,7 @@ jobs:
           DB_USER="${parsed[DB_USER]}"
           DB_PASSWORD="${parsed[DB_PASSWORD]}"
           DB_NAME="${parsed[DB_NAME]}"
+          SHADOW_DB_NAME="${parsed[SHADOW_DB_NAME]:-zutiClickerShadow}"
 
           if [ -z "$DB_HOST" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DB_NAME" ]; then
             echo "::error::$ENV_FILE is missing one of DB_HOST/DB_USER/DB_PASSWORD/DB_NAME - refusing to build a broken DATABASE_URL."
@@ -207,12 +217,17 @@ jobs:
           fi
 
           DATABASE_URL="mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+          SHADOW_DATABASE_URL="mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${SHADOW_DB_NAME}"
           echo "::add-mask::${DB_PASSWORD}"
           echo "::add-mask::${DATABASE_URL}"
+          echo "::add-mask::${SHADOW_DATABASE_URL}"
           {
             echo "DATABASE_URL<<PROD_DB_URL_EOF"
             echo "$DATABASE_URL"
             echo "PROD_DB_URL_EOF"
+            echo "SHADOW_DATABASE_URL<<PROD_SHADOW_DB_URL_EOF"
+            echo "$SHADOW_DATABASE_URL"
+            echo "PROD_SHADOW_DB_URL_EOF"
           } >> "$GITHUB_ENV"
 
       - name: Apply migrations to the production database
