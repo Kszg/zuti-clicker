@@ -135,7 +135,8 @@ export class TestData {
     language: "hu",
     autosaveEnabled: false,
     autosaveIntervalSecs: 300,
-    prestigeCeremony: "brief"
+    prestigeCeremony: "brief",
+    hideFromLeaderboards: true
   };
 
   static readonly DEFAULT_SETTINGS_EXPECTED = {
@@ -143,7 +144,8 @@ export class TestData {
     language: "en",
     autosaveEnabled: true,
     autosaveIntervalSecs: 30,
-    prestigeCeremony: "full"
+    prestigeCeremony: "full",
+    hideFromLeaderboards: false
   };
 
   static readonly SETTINGS_PARTIAL = { theme: "dark" };
@@ -153,6 +155,18 @@ export class TestData {
   static readonly SETTINGS_INVALID_INTERVAL = { autosaveIntervalSecs: 45 };
   static readonly SETTINGS_STRING_INTERVAL = { autosaveIntervalSecs: "30" };
   static readonly SETTINGS_INVALID_ENABLED = { autosaveEnabled: "yes" };
+  static readonly SETTINGS_INVALID_HIDE_FROM_LEADERBOARDS = { hideFromLeaderboards: "yes" };
   static readonly SETTINGS_UNKNOWN_KEY = { someFutureSetting: true };
   static readonly SETTINGS_MIXED_INVALID = { theme: "light", language: "de" };
+
+  // Base shape for leaderboard tests — override totalTokensEarned/
+  // totalClicks/phdCount/elapsedSeconds per user to control ranking.
+  static readonly LEADERBOARD_BASE_SAVE = {
+    tokens: 0,
+    totalTokensEarned: 0,
+    totalClicks: 0,
+    elapsedSeconds: 0,
+    phdCount: 0,
+    units: []
+  };
 }

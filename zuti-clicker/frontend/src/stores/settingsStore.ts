@@ -15,6 +15,7 @@ export interface SettingsSnapshot {
   autosaveEnabled: boolean;
   autosaveIntervalSecs: number;
   prestigeCeremony: PrestigeCeremony;
+  hideFromLeaderboards: boolean;
 }
 
 export type FlushPushResult =
@@ -43,6 +44,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const autosaveEnabled = ref<boolean>(initial.autosaveEnabled);
   const autosaveIntervalSecs = ref<number>(initial.autosaveIntervalSecs);
   const prestigeCeremony = ref<PrestigeCeremony>(initial.prestigeCeremony);
+  const hideFromLeaderboards = ref<boolean>(initial.hideFromLeaderboards);
 
   // Set while a server value is being applied locally, so the persistence
   // watcher below doesn't immediately push it right back to the server.
@@ -72,7 +74,8 @@ export const useSettingsStore = defineStore("settings", () => {
       language: language.value,
       autosaveEnabled: autosaveEnabled.value,
       autosaveIntervalSecs: autosaveIntervalSecs.value,
-      prestigeCeremony: prestigeCeremony.value
+      prestigeCeremony: prestigeCeremony.value,
+      hideFromLeaderboards: hideFromLeaderboards.value
     };
   }
 
@@ -82,6 +85,7 @@ export const useSettingsStore = defineStore("settings", () => {
     autosaveEnabled.value = snap.autosaveEnabled;
     autosaveIntervalSecs.value = snap.autosaveIntervalSecs;
     prestigeCeremony.value = snap.prestigeCeremony;
+    hideFromLeaderboards.value = snap.hideFromLeaderboards;
   }
 
   // Used by the settings modal's "Done" button: unlike the normal debounced
@@ -100,7 +104,8 @@ export const useSettingsStore = defineStore("settings", () => {
         language: language.value,
         autosaveEnabled: autosaveEnabled.value,
         autosaveIntervalSecs: autosaveIntervalSecs.value,
-        prestigeCeremony: prestigeCeremony.value
+        prestigeCeremony: prestigeCeremony.value,
+        hideFromLeaderboards: hideFromLeaderboards.value
       });
       return { ok: true, local: false };
     } catch {
@@ -117,7 +122,8 @@ export const useSettingsStore = defineStore("settings", () => {
           language: language.value,
           autosaveEnabled: autosaveEnabled.value,
           autosaveIntervalSecs: autosaveIntervalSecs.value,
-          prestigeCeremony: prestigeCeremony.value
+          prestigeCeremony: prestigeCeremony.value,
+          hideFromLeaderboards: hideFromLeaderboards.value
         })
       );
     } catch {
@@ -136,7 +142,8 @@ export const useSettingsStore = defineStore("settings", () => {
           language: language.value,
           autosaveEnabled: autosaveEnabled.value,
           autosaveIntervalSecs: autosaveIntervalSecs.value,
-          prestigeCeremony: prestigeCeremony.value
+          prestigeCeremony: prestigeCeremony.value,
+          hideFromLeaderboards: hideFromLeaderboards.value
         })
         .catch(() => {
           // Settings are not critical enough to surface a sync error for.
@@ -164,7 +171,7 @@ export const useSettingsStore = defineStore("settings", () => {
   );
 
   watch(
-    [theme, language, autosaveEnabled, autosaveIntervalSecs, prestigeCeremony],
+    [theme, language, autosaveEnabled, autosaveIntervalSecs, prestigeCeremony, hideFromLeaderboards],
     () => {
       _writeLocalStorage();
       if (!_applying) _schedulePush();
@@ -193,6 +200,7 @@ export const useSettingsStore = defineStore("settings", () => {
       autosaveEnabled.value = sanitized.autosaveEnabled;
       autosaveIntervalSecs.value = sanitized.autosaveIntervalSecs;
       prestigeCeremony.value = sanitized.prestigeCeremony;
+      hideFromLeaderboards.value = sanitized.hideFromLeaderboards;
       _writeLocalStorage();
     } catch (e) {
       void (e as ApiError | Error);
@@ -213,6 +221,7 @@ export const useSettingsStore = defineStore("settings", () => {
     autosaveEnabled,
     autosaveIntervalSecs,
     prestigeCeremony,
+    hideFromLeaderboards,
     toggleTheme,
     setLanguage,
     setPrestigeCeremony,

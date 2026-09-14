@@ -7,6 +7,7 @@ export interface SettingsInput {
   autosaveEnabled?: boolean;
   autosaveIntervalSecs?: number;
   prestigeCeremony?: string;
+  hideFromLeaderboards?: boolean;
 }
 
 export const getSettings = async (userId: number) => {
@@ -23,7 +24,10 @@ export const upsertSettings = async (userId: number, data: SettingsInput) => {
     ...(data.autosaveIntervalSecs !== undefined
       ? { autosaveIntervalSecs: data.autosaveIntervalSecs }
       : {}),
-    ...(data.prestigeCeremony !== undefined ? { prestigeCeremony: data.prestigeCeremony } : {})
+    ...(data.prestigeCeremony !== undefined ? { prestigeCeremony: data.prestigeCeremony } : {}),
+    ...(data.hideFromLeaderboards !== undefined
+      ? { hideFromLeaderboards: data.hideFromLeaderboards }
+      : {})
   };
 
   return prisma.userSettings.upsert({

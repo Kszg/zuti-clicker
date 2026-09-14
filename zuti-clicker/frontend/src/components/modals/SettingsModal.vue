@@ -161,6 +161,22 @@ async function handleDone() {
       </div>
     </div>
 
+    <div class="section">
+      <span class="section-label">{{ t("settings.privacy") }}</span>
+
+      <div class="field-row">
+        <span class="field-label">{{ t("settings.hideFromLeaderboards") }}</span>
+        <button
+          class="toggle-btn"
+          :class="{ active: settings.hideFromLeaderboards }"
+          :aria-pressed="settings.hideFromLeaderboards"
+          @click="settings.hideFromLeaderboards = !settings.hideFromLeaderboards"
+        >
+          {{ settings.hideFromLeaderboards ? "✓" : "✗" }}
+        </button>
+      </div>
+    </div>
+
     <template #actions>
       <div class="modal-actions">
         <button class="btn-cancel" :disabled="saving" @click="handleCancel">

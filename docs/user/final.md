@@ -168,19 +168,42 @@ A fejléc jobb szélén gyorsgombok találhatók:
 
 - **Nyelv**: Angolra vagy magyarra váltás. Az összes szöveg azonnal megváltozik.
 - **Téma**: Sötét és világos megjelenési mód közötti váltás.
+- **🏆 (kupa)**: Megnyitja a Ranglisták ablakot (lásd lentebb) — csak bejelentkezve látható.
 - **⚙️ (fogaskerék)**: Megnyitja a teljes Beállítások panelt (lásd lentebb).
 
 Bejelentkezve ezek a beállítások (a téma, a nyelv, az autosave és a fokozat-ünneplés preferencia) a szerveren is elmentődnek, így egy másik böngészőben vagy eszközön bejelentkezve automatikusan visszaáll ugyanaz a beállítás. Vendégként ezek csak a böngésződ helyi tárolójában (`localStorage`) maradnak meg — egy másik eszközön nem lesznek jelen.
 
 ---
 
+## Ranglisták
+
+A fejléc 🏆 gombjára kattintva (csak bejelentkezve érhető el) megnyílik a
+Ranglisták ablak. Négy mérőszám közül választhatsz a fül-váltóval:
+
+- **Tokens**: Az összes valaha szerzett token (mint a Státuszoszlop „Total Earned" mezője).
+- **Clicks**: Az összes eddigi kattintás.
+- **PhDs**: Az eddig megszerzett PhD-k száma.
+- **Playtime**: Az eltelt játékidő.
+
+A lista a legjobb játékosokat mutatja helyezés (Rank), felhasználónév (Player)
+és érték (Value) szerint. Ha a saját helyezésed nincs benne a megjelenített
+listában, egy külön, kiemelt sor jelenik meg alatta „A te helyezésed" felirattal.
+
+**Adatvédelem**: a Beállítások panel „Privacy" szekciójában a „Hide me from
+leaderboards" / „Elrejtés a ranglistákról" kapcsolóval elrejtheted magad mások
+ranglistáiról — a saját ranglista-nézeted ekkor is megmutatja a helyezésedet,
+csak egy jelzéssel, hogy jelenleg rejtve vagy mások elől.
+
+---
+
 ## Beállítások
 
-A fejléc ⚙️ gombjára kattintva megnyílik a Beállítások ablak, három szekcióval:
+A fejléc ⚙️ gombjára kattintva megnyílik a Beállítások ablak, négy szekcióval:
 
 - **Megjelenés**: Téma (Sötét/Világos), Nyelv (EN/HU).
 - **Játék**: Fokozatszerzés ünneplése — **Full ceremony** (teljes képernyős animáció) vagy **Brief** (csak a megerősítő ablak). Érdemes az első néhány fokozatszerzés után Brief-re váltani, ha az animáció helyett gyorsabban szeretnél tovább játszani.
 - **Mentés**: Automatikus mentés be/ki kapcsolása, és — ha be van kapcsolva — az időköz (15s / 30s / 1p / 5p).
+- **Privacy**: „Hide me from leaderboards" / „Elrejtés a ranglistákról" — lásd fent, „Ranglisták".
 
 A téma és a nyelv módosítása azonnal látszik, amíg az ablak nyitva van, de csak
 akkor kerül ténylegesen elmentésre, ha a **„Done" (Kész)** gombbal zárod be az

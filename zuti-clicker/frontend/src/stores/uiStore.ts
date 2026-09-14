@@ -11,6 +11,7 @@ export const useUiStore = defineStore("ui", () => {
   const confirmDeleteOpen = ref(false);
   const guestWarningDismissed = ref(false);
   const settingsModalOpen = ref(false);
+  const leaderboardModalOpen = ref(false);
   const prestigeConfirmOpen = ref(false);
   const prestigeCeremonyOpen = ref(false);
   const lastPrestigeGain = ref(0);
@@ -21,6 +22,7 @@ export const useUiStore = defineStore("ui", () => {
     confirmDeleteOpen,
     guestWarningDismissed,
     settingsModalOpen,
+    leaderboardModalOpen,
     prestigeConfirmOpen,
     prestigeCeremonyOpen,
     lastPrestigeGain,

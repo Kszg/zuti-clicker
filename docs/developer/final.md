@@ -138,7 +138,8 @@ router/ → controllers/ → database/models/ → Prisma → MariaDB
 - **`middlewares/`** – `isAuthenticated`: session token ellenőrzés, `req.identity` feltöltése
 - **`helpers/`** – HMAC-SHA256 hitelesítés, random token generálás
 - **`constants/responses.ts`** – Centralizált HTTP válaszkódok és üzenetek
-- **`constants/settings.ts`** – A `UserSettings` mezők megengedett értékei (téma, nyelv, autosave-intervallum, fokozatszerzés-ünneplés) és alapértékei — a `config/swagger.ts` és a `controllers/settings.ts` egyaránt ebből importál, hogy ne csúszhassanak szét
+- **`constants/settings.ts`** – A `UserSettings` mezők megengedett értékei (téma, nyelv, autosave-intervallum, fokozatszerzés-ünneplés, ranglista-elrejtés) és alapértékei — a `config/swagger.ts` és a `controllers/settings.ts` egyaránt ebből importál, hogy ne csúszhassanak szét
+- **`constants/leaderboard.ts`** – A ranglista-mérőszámok (`tokens`, `clicks`, `phd`, `playtime`) leképezése a megfelelő `GameSave` mezőre, valamint az alapértelmezett és maximális `limit` érték — lásd lent, "Ranglisták (leaderboard)"
 
 #### Végpontok
 
@@ -148,6 +149,7 @@ router/ → controllers/ → database/models/ → Prisma → MariaDB
 | `GET` | `/auth/me` | kötelező | Bejelentkezett felhasználó adatai |
 | `GET`, `PUT`, `DELETE` | `/save` | kötelező | Játékmentés betöltése, felülírása (részlegesen: a prestige mezők opcionálisak), törlése |
 | `GET`, `PUT` | `/settings` | kötelező | Felhasználói beállítások betöltése (alapértékek, ha még nincs mentve) és részleges frissítése |
+| `GET` | `/leaderboard` | kötelező | Rangsor egy adott mérőszám szerint (`tokens`, `clicks`, `phd`, `playtime`), plusz a lekérdező saját helyezése |
 
 A `PUT /save` öt prestige-mezője (`phdCount`, `prestigeCount`, `runTokensEarned`, `runClicks`, `runSeconds`) **opcionális**: egy régebbi kliens, amely nem ismeri ezeket, biztonságosan tud menteni — a hiányzó mezőket a szerver a már tárolt értéken hagyja (nem nullázza), első mentésnél pedig az életút-mezőkből tölti fel őket.
 
@@ -163,6 +165,7 @@ App.vue
   ├── saveStore               → load/sync/reset (autosave-időzítő a settingsStore-ból olvas)
   ├── uiStore                → modál állapotok, mobilePanel ("none" | "stats" | "units")
   ├── toastStore             → átmeneti értesítések (pl. beállítások mentése)
+  ├── leaderboardStore       → mérőszámonkénti rangsor lekérése (nincs localStorage-gyorsítótár, mindig a szerver a forrás)
   └── gameStore              → tokenek, egységek, statisztikák, prestige állapot
 ```
 
@@ -211,6 +214,56 @@ descriptions: { ..., iota: "Leírás..." }
 ```
 
 Az egység azonnal megjelenik a shopban (a láthatóság automatikusan számított: `totalTokensEarned >= baseCost * 0.1`).
+
+---
+
+## Ranglisták (leaderboard)
+
+A `GET /leaderboard` végpont (bejelentkezést igényel) egy adott életút-mérőszám
+szerinti rangsort ad vissza. A mérőszám-választék és a hozzá tartozó `GameSave`
+mező a `src/constants/leaderboard.ts`-ben van definiálva:
+
+| `metric` érték | `GameSave` mező |
+|---|---|
+| `tokens` (alapértelmezett) | `totalTokensEarned` |
+| `clicks` | `totalClicks` |
+| `phd` | `phdCount` |
+| `playtime` | `elapsedSeconds` |
+
+Query paraméterek: `metric` (fenti értékek egyike) és `limit` (egész szám,
+`1`–`100`, alapértelmezett `50`). A válasz:
+
+```jsonc
+{
+  "metric": "tokens",
+  "entries": [{ "rank": 1, "username": "...", "value": 123.45 }, ...],
+  "viewer": { "rank": 7, "value": 12.3, "hidden": false } // null, ha a lekérdezőnek nincs mentése
+}
+```
+
+Az `entries` sosem tartalmaz `userId`-t vagy e-mailt, csak `rank`/`username`/`value`-t.
+A `viewer` mező akkor is megjelenik, ha a lekérdező kívül esik a visszaadott
+`entries` listán (`limit`-en túli helyezés) — ilyenkor a frontend egy külön,
+"a te helyezésed" sort jelenít meg a lista alatt (`LeaderboardModal.vue`).
+
+**Adatvédelmi kizárás** – a `UserSettings.hideFromLeaderboards` mező (alapértéke
+`false`, a többi opcionális beállítási mezővel megegyező mintán a `PUT /settings`
+végponton keresztül módosítható) kizárja a játékost mások ranglistájáról. A
+kizárt játékos saját lekérdezése a `viewer.hidden: true` jelzést kapja, de a
+helyezése továbbra is a látható játékosok közötti (elméleti) helyét mutatja.
+
+**Holtverseny** – azonos érték esetén a sorrend a `userId` szerint növekvő,
+hogy a rangsor minden lekérdezésnél ugyanazt az eredményt adja (`getTopEntries`
+és `getViewerStanding` a `src/database/models/leaderboard.ts`-ben ugyanazt a
+`VISIBLE_FILTER`-t és tie-break szabályt használja).
+
+**Új mérőszám hozzáadása**: bővítsd a `LEADERBOARD_METRICS` objektumot a
+`src/constants/leaderboard.ts`-ben egy új kulccsal és a megfelelő `GameSave`
+mezővel, adj hozzá egy `@@index([...])`-et a mezőre a `prisma/schema.prisma`
+`GameSave` modelljéhez (additív migráció — lásd fent), majd tükrözd a
+mérőszám-kulcsot a frontend oldalán is: `frontend/src/types/index.ts`
+`LeaderboardMetric` típusa és a `LeaderboardModal.vue`-ban a `metricLabels`
+(plusz az új `leaderboard.metricXxx` fordítási kulcs mindkét i18n fájlban).
 
 ---
 
