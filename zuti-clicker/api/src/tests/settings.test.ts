@@ -44,6 +44,9 @@ describe("Settings endpoints - authenticated", () => {
     expect(res.body.settings.prestigeCeremony).toBe(
       TestData.DEFAULT_SETTINGS_EXPECTED.prestigeCeremony
     );
+    expect(res.body.settings.hideFromLeaderboards).toBe(
+      TestData.DEFAULT_SETTINGS_EXPECTED.hideFromLeaderboards
+    );
     expect(res.body.settings.updatedAt).toBeNull();
   });
 
@@ -58,6 +61,9 @@ describe("Settings endpoints - authenticated", () => {
       TestData.VALID_SETTINGS.autosaveIntervalSecs
     );
     expect(res.body.settings.prestigeCeremony).toBe(TestData.VALID_SETTINGS.prestigeCeremony);
+    expect(res.body.settings.hideFromLeaderboards).toBe(
+      TestData.VALID_SETTINGS.hideFromLeaderboards
+    );
   });
 
   it("GET /settings returns the persisted values, with a string updatedAt", async () => {
@@ -136,6 +142,30 @@ describe("Settings endpoints - authenticated", () => {
       .send(TestData.SETTINGS_INVALID_ENABLED);
     expect(res.status).toBe(400);
     expect(res.body.error).toBe(Responses.SETTINGS.INVALID_AUTOSAVE_ENABLED.body.error);
+  });
+
+  it("PUT /settings rejects a non-boolean hideFromLeaderboards", async () => {
+    const res = await api
+      .put("/settings")
+      .set("Cookie", cookie)
+      .send(TestData.SETTINGS_INVALID_HIDE_FROM_LEADERBOARDS);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SETTINGS.INVALID_HIDE_FROM_LEADERBOARDS.body.error);
+  });
+
+  it("regression: omitting hideFromLeaderboards on a later PUT preserves the stored value", async () => {
+    // VALID_SETTINGS (applied earlier in this describe block) already set
+    // hideFromLeaderboards: true — a partial update that never mentions it
+    // must not reset it back to the false default.
+    const res = await api
+      .put("/settings")
+      .set("Cookie", cookie)
+      .send(TestData.SETTINGS_PARTIAL);
+    expect(res.status).toBe(200);
+    expect(res.body.settings.hideFromLeaderboards).toBe(true);
+
+    const getRes = await api.get("/settings").set("Cookie", cookie);
+    expect(getRes.body.settings.hideFromLeaderboards).toBe(true);
   });
 
   it("a mixed valid+invalid body writes nothing (validate-before-write atomicity)", async () => {
