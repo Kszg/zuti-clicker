@@ -1,10 +1,13 @@
 name: PR Tests
 
-# Runs on every PR into main. Three independent test stages (no interdependency
+# Runs on every PR into main. Four test stages feed a shared JUnit -> HTML/ODS
+# report pipeline, aggregated and published by two further jobs. Three of the
+# four (typecheck, verify-migrations, frontend-tests) have no interdependency
 # between them - on this single self-hosted runner they still queue one after
 # another, but this keeps each stage's pass/fail visible on its own and keeps
-# the door open for more runners later) feed a shared JUnit -> HTML/ODS report
-# pipeline, aggregated and published by two further jobs.
+# the door open for more runners later. api-tests depends on verify-migrations
+# so it runs its test suite against an already-migrated, already-verified
+# database instead of re-applying migrations itself.
 on:
   pull_request:
     branches: [main]
@@ -137,7 +140,161 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Stage 2: frontend tests (Vitest, no server/DB involved)
+  # Stage 2: verify migrations. This is the pre-merge proof that a migration
+  # is *correct*, not just that it happens to exist — deploy.yml's `migrate`
+  # job applies pending migrations to the live production database on every
+  # push to main with no human approval step and no staging database, so
+  # this is the only automated gate standing between a bad migration and
+  # production. Two checks, both against the real, dedicated zutiClickerTest
+  # database (see the "Load CI environment file" step below):
+  #   1. `prisma migrate deploy` — does the migration SQL apply cleanly at
+  #      all against a real MariaDB instance?
+  #   2. `prisma migrate diff --from-config-datasource --to-schema ... --exit-code`
+  #      — after applying, does the live schema *exactly* match what
+  #      prisma/schema.prisma declares? This catches the mistake `migrate
+  #      deploy` alone can't: schema.prisma edited without a matching
+  #      migration (or vice versa) — both empirically verified against the
+  #      real zutiClickerTest database (exit 0 / "No difference detected."
+  #      when they match, exit 2 with a readable diff when a field was
+  #      artificially removed from a throwaway schema copy).
+  # ---------------------------------------------------------------------------
+  verify-migrations:
+    name: Verify migrations
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: zuti-clicker/api
+        run: pnpm install --frozen-lockfile
+
+      # Same runner-local file api-tests uses below (never a GitHub secret) —
+      # both jobs apply migrations to the same dedicated zutiClickerTest
+      # database, so api-tests (which needs this job to finish first) runs
+      # its actual test suite against an already-migrated, already-verified
+      # schema instead of re-applying migrations itself.
+      - name: Load CI environment file
+        id: load_env
+        working-directory: zuti-clicker/api
+        run: |
+          ENV_CI_FILE="/mnt/raid1/zuti-clicker-ci/.env.ci"
+          if [ ! -f "$ENV_CI_FILE" ]; then
+            echo "::error::Missing $ENV_CI_FILE on this runner - see 'What I need from you' in the CI/CD plan for its required contents."
+            exit 1
+          fi
+          cp "$ENV_CI_FILE" .env
+
+          while IFS='=' read -r key value; do
+            [ -z "$key" ] && continue
+            case "$key" in \#*) continue ;; esac
+            value="${value%$'\r'}"
+            if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+              value="${value:1:-1}"
+            elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+              value="${value:1:-1}"
+            fi
+            echo "::add-mask::$value"
+            {
+              echo "${key}<<CI_ENV_VALUE_EOF"
+              echo "$value"
+              echo "CI_ENV_VALUE_EOF"
+            } >> "$GITHUB_ENV"
+          done < "$ENV_CI_FILE"
+
+      - name: Generate Prisma client
+        working-directory: zuti-clicker/api
+        run: pnpm exec prisma generate
+
+      - name: Apply migrations to the test database
+        id: migrate_deploy
+        working-directory: zuti-clicker/api
+        run: |
+          SECONDS=0
+          set +e
+          pnpm exec prisma migrate deploy > /tmp/zuti-migrate-deploy.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          echo "duration=$SECONDS" >> "$GITHUB_OUTPUT"
+          set -e
+          cat /tmp/zuti-migrate-deploy.log
+
+      # Only meaningful once migrate deploy above actually succeeded - a
+      # schema that failed to even apply has nothing useful to diff.
+      - name: Verify schema.prisma matches the applied migrations
+        id: migrate_diff
+        if: steps.migrate_deploy.outputs.exit_code == '0'
+        working-directory: zuti-clicker/api
+        run: |
+          SECONDS=0
+          set +e
+          pnpm exec prisma migrate diff \
+            --from-config-datasource \
+            --to-schema prisma/schema.prisma \
+            --exit-code > /tmp/zuti-migrate-diff.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          echo "duration=$SECONDS" >> "$GITHUB_OUTPUT"
+          set -e
+          cat /tmp/zuti-migrate-diff.log
+
+      # Neither prisma command emits JUnit XML, so this stage's report is a
+      # small hand-written one (two synthetic cases), same approach as the
+      # typecheck stage above.
+      - name: Write JUnit report
+        if: always()
+        run: |
+          mkdir -p reports
+          deploy_status="${{ steps.migrate_deploy.outputs.exit_code }}"
+          diff_status="${{ steps.migrate_diff.outputs.exit_code }}"
+          deploy_dur="${{ steps.migrate_deploy.outputs.duration }}"
+          diff_dur="${{ steps.migrate_diff.outputs.duration }}"
+          deploy_failure=""
+          diff_failure=""
+          failures=0
+          if [ "$deploy_status" != "0" ]; then
+            failures=$((failures + 1))
+            deploy_failure="<failure message=\"prisma migrate deploy exited with code ${deploy_status}\">See the Apply migrations step log</failure>"
+          fi
+          if [ -z "$diff_status" ] || [ "$diff_status" != "0" ]; then
+            failures=$((failures + 1))
+            diff_failure="<failure message=\"prisma migrate diff exited with code ${diff_status:-skipped}\">See the Verify schema.prisma step log</failure>"
+          fi
+          total_time=$((deploy_dur + ${diff_dur:-0}))
+          cat > reports/junit-migrations-${{ github.run_number }}.xml <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="migrations" tests="2" failures="${failures}" time="${total_time}">
+            <testsuite name="migrations" tests="2" failures="${failures}" time="${total_time}">
+              <testcase classname="migrations" name="migrate deploy applies cleanly" time="${deploy_dur}">${deploy_failure}</testcase>
+              <testcase classname="migrations" name="schema.prisma matches the applied migrations (no drift)" time="${diff_dur:-0}">${diff_failure}</testcase>
+            </testsuite>
+          </testsuites>
+          XML
+          cat reports/junit-migrations-${{ github.run_number }}.xml
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          path: reports/junit-migrations-${{ github.run_number }}.xml
+          archive: false
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Fail job if migration verification failed
+        if: always()
+        run: |
+          if [ "${{ steps.migrate_deploy.outputs.exit_code }}" != "0" ] || [ "${{ steps.migrate_diff.outputs.exit_code }}" != "0" ]; then
+            echo "::error::Migration verification failed - see the step logs above"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Stage 3: frontend tests (Vitest, no server/DB involved)
   # ---------------------------------------------------------------------------
   frontend-tests:
     name: Frontend tests
@@ -175,13 +332,15 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
-  # Stage 3: api tests (Jest/supertest integration tests against a real,
+  # Stage 4: api tests (Jest/supertest integration tests against a real,
   # dedicated zutiClickerTest database - see CLAUDE.md "Database & migrations"
   # and the CI/CD plan's "What I need from you" section for how the runner's
-  # CI env file is provisioned).
+  # CI env file is provisioned). Depends on verify-migrations so the database
+  # is already migrated (and verified correct) by the time these tests run.
   # ---------------------------------------------------------------------------
   api-tests:
     name: API tests
+    needs: [verify-migrations]
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v7
@@ -249,11 +408,6 @@ jobs:
       - name: Generate Prisma client
         working-directory: zuti-clicker/api
         run: pnpm exec prisma generate
-
-      # Also proves the migrations apply cleanly from scratch.
-      - name: Apply migrations to the test database
-        working-directory: zuti-clicker/api
-        run: pnpm exec prisma migrate deploy
 
       # Tests hit a hardcoded http://localhost:2710 (src/constants/test-data.ts)
       # so the server has to be listening on exactly that port before `pnpm test`.
@@ -327,7 +481,7 @@ jobs:
   # ---------------------------------------------------------------------------
   reports:
     name: Aggregate reports
-    needs: [typecheck, frontend-tests, api-tests]
+    needs: [typecheck, verify-migrations, frontend-tests, api-tests]
     if: always()
     runs-on: [self-hosted, Linux, X64]
     steps:
