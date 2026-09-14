@@ -15,6 +15,7 @@ interface SettingsBody {
   autosaveEnabled?: unknown;
   autosaveIntervalSecs?: unknown;
   prestigeCeremony?: unknown;
+  hideFromLeaderboards?: unknown;
 }
 
 function isAbsentOrOneOf(value: unknown, allowed: readonly string[]): boolean {
@@ -61,6 +62,7 @@ export const loadSettings = async (req: express.Request, res: express.Response) 
             autosaveEnabled: row.autosaveEnabled,
             autosaveIntervalSecs: row.autosaveIntervalSecs,
             prestigeCeremony: row.prestigeCeremony,
+            hideFromLeaderboards: row.hideFromLeaderboards,
             updatedAt: row.updatedAt
           }
         : { ...DEFAULT_SETTINGS, updatedAt: null }
@@ -114,8 +116,14 @@ export const storeSettings = async (req: express.Request, res: express.Response)
       return;
     }
 
-    const { theme, language, autosaveEnabled, autosaveIntervalSecs, prestigeCeremony } =
-      req.body as SettingsBody;
+    const {
+      theme,
+      language,
+      autosaveEnabled,
+      autosaveIntervalSecs,
+      prestigeCeremony,
+      hideFromLeaderboards
+    } = req.body as SettingsBody;
 
     // Validate everything before writing anything, so a partially-invalid
     // body never partially applies.
@@ -139,6 +147,11 @@ export const storeSettings = async (req: express.Request, res: express.Response)
       res.status(r.status).json(r.body);
       return;
     }
+    if (hideFromLeaderboards !== undefined && typeof hideFromLeaderboards !== "boolean") {
+      const r = Responses.SETTINGS.INVALID_HIDE_FROM_LEADERBOARDS;
+      res.status(r.status).json(r.body);
+      return;
+    }
     // `.includes` also rejects a non-number (e.g. a stringified "30") since it
     // never matches any entry in AUTOSAVE_INTERVALS.
     if (
@@ -157,7 +170,8 @@ export const storeSettings = async (req: express.Request, res: express.Response)
       language: language as string | undefined,
       autosaveEnabled: autosaveEnabled as boolean | undefined,
       autosaveIntervalSecs: autosaveIntervalSecs as number | undefined,
-      prestigeCeremony: prestigeCeremony as string | undefined
+      prestigeCeremony: prestigeCeremony as string | undefined,
+      hideFromLeaderboards: hideFromLeaderboards as boolean | undefined
     });
 
     const r = Responses.SETTINGS.UPDATE_SUCCESS;
@@ -169,6 +183,7 @@ export const storeSettings = async (req: express.Request, res: express.Response)
         autosaveEnabled: row.autosaveEnabled,
         autosaveIntervalSecs: row.autosaveIntervalSecs,
         prestigeCeremony: row.prestigeCeremony,
+        hideFromLeaderboards: row.hideFromLeaderboards,
         updatedAt: row.updatedAt
       }
     });

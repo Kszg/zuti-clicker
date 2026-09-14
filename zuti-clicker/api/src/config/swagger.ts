@@ -2,6 +2,7 @@ import swaggerJsdoc from "swagger-jsdoc";
 import { fileURLToPath } from "url";
 import path from "path";
 import { THEMES, LANGUAGES, PRESTIGE_CEREMONIES, AUTOSAVE_INTERVALS } from "../constants/settings";
+import { LEADERBOARD_METRICS } from "../constants/leaderboard";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -172,6 +173,11 @@ export const buildSwaggerSpec = (): object => {
                 example: 30
               },
               prestigeCeremony: { type: "string", enum: [...PRESTIGE_CEREMONIES], example: "full" },
+              hideFromLeaderboards: {
+                type: "boolean",
+                description: "When true, this player is excluded from other players' leaderboard views",
+                example: false
+              },
               updatedAt: {
                 type: ["string", "null"],
                 format: "date-time",
@@ -187,7 +193,8 @@ export const buildSwaggerSpec = (): object => {
               language: { type: "string", enum: [...LANGUAGES] },
               autosaveEnabled: { type: "boolean" },
               autosaveIntervalSecs: { type: "integer", enum: [...AUTOSAVE_INTERVALS] },
-              prestigeCeremony: { type: "string", enum: [...PRESTIGE_CEREMONIES] }
+              prestigeCeremony: { type: "string", enum: [...PRESTIGE_CEREMONIES] },
+              hideFromLeaderboards: { type: "boolean" }
             }
           },
           SettingsResponse: {
@@ -218,6 +225,44 @@ export const buildSwaggerSpec = (): object => {
                 }
               }
             ]
+          },
+          LeaderboardEntry: {
+            type: "object",
+            properties: {
+              rank: { type: "integer", minimum: 1, example: 1 },
+              username: { type: "string", example: "johndoe" },
+              value: { type: "number", example: 9999.99 }
+            }
+          },
+          LeaderboardViewer: {
+            type: "object",
+            description: "The requesting user's own standing, even when outside the returned entries",
+            properties: {
+              rank: { type: "integer", minimum: 1, example: 42 },
+              value: { type: "number", example: 123.45 },
+              hidden: {
+                type: "boolean",
+                description: "True when this user has opted out via hideFromLeaderboards",
+                example: false
+              }
+            }
+          },
+          LeaderboardResponse: {
+            type: "object",
+            properties: {
+              metric: { type: "string", enum: Object.keys(LEADERBOARD_METRICS), example: "tokens" },
+              entries: {
+                type: "array",
+                items: { $ref: "#/components/schemas/LeaderboardEntry" }
+              },
+              viewer: {
+                oneOf: [
+                  { $ref: "#/components/schemas/LeaderboardViewer" },
+                  { type: "null" }
+                ],
+                description: "null when the requesting user has no save yet"
+              }
+            }
           }
         },
         responses: {

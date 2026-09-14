@@ -14,5 +14,6 @@ export const DEFAULT_SETTINGS = {
   language: "en",
   autosaveEnabled: true,
   autosaveIntervalSecs: 30,
-  prestigeCeremony: "full"
+  prestigeCeremony: "full",
+  hideFromLeaderboards: false
 } as const;

@@ -54,7 +54,21 @@ export class Responses {
       status: 400,
       body: { error: "autosaveIntervalSecs must be one of: 15, 30, 60, 300." }
     },
+    INVALID_HIDE_FROM_LEADERBOARDS: {
+      status: 400,
+      body: { error: "hideFromLeaderboards must be a boolean." }
+    },
     UPDATE_SUCCESS: { status: 200, body: { message: "Settings updated successfully." } },
+    INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
+  } as const;
+
+  static readonly LEADERBOARD = {
+    // Keep the metric list here in sync with constants/leaderboard.ts.
+    INVALID_METRIC: {
+      status: 400,
+      body: { error: "metric must be one of: tokens, clicks, phd, playtime." }
+    },
+    INVALID_LIMIT: { status: 400, body: { error: "limit must be an integer between 1 and 100." } },
     INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
   } as const;
 }
