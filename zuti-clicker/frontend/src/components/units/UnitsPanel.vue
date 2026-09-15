@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
 import { useUiStore } from "@/stores/uiStore";
-import MultiplierSelector from "./MultiplierSelector.vue";
-import UnitCard from "./UnitCard.vue";
-import ShopTabs from "./ShopTabs.vue";
-import UpgradesPanel from "./UpgradesPanel.vue";
-import { SKIN_DEFINITIONS, UNIT_DEFINITIONS } from "@/utils/gameConstants";
+import { UNIT_DEFINITIONS, SKIN_DEFINITIONS } from "@/utils/gameConstants";
+import type { Multiplier } from "@/types";
 import MultiplierSelector from "./MultiplierSelector.vue";
 import UnitCard from "./UnitCard.vue";
 import SkinCard from "./SkinCard.vue";
-import type { Multiplier } from "@/types";
+import ShopTabs from "./ShopTabs.vue";
+import UpgradesPanel from "./UpgradesPanel.vue";
 
 const { t } = useI18n();
 const ui = useUiStore();

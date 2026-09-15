@@ -66,6 +66,8 @@ export interface BoosterDefinition {
 export interface ActiveBoosterState {
   id: string;
   expiresAt: number;
+}
+
 export interface SkinState {
   id: string;
   owned: boolean;

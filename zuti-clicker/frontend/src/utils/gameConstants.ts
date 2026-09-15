@@ -1,5 +1,4 @@
-import type { UnitDefinition, UpgradeDefinition, BoosterDefinition } from "@/types";
-import type { SkinDefinition, UnitDefinition } from "@/types";
+import type { UnitDefinition, SkinDefinition, UpgradeDefinition, BoosterDefinition } from "@/types";
 
 export const UNIT_DEFINITIONS: UnitDefinition[] = [
   { id: "alpha", baseCost: 10, baseProduction: 0.3, costGrowth: 1.15 },
