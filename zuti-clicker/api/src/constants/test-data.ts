@@ -177,6 +177,17 @@ export class TestData {
     upgrades: "chalk"
   };
 
+  // Would otherwise reach UpgradeSave's unique constraint and 500 — must be
+  // rejected with 400 at validation instead.
+  static readonly SAVE_INVALID_UPGRADES_DUPLICATE = {
+    tokens: 1,
+    totalTokensEarned: 1,
+    totalClicks: 1,
+    elapsedSeconds: 1,
+    units: [],
+    upgrades: ["chalk", "chalk"]
+  };
+
   static readonly VALID_SETTINGS = {
     theme: "light",
     language: "hu",

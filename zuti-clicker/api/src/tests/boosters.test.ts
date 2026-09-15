@@ -74,6 +74,33 @@ describe("Booster endpoint - claim / cooldown", () => {
   });
 });
 
+describe("Booster endpoint - concurrent claims (race condition)", () => {
+  // This IS the anti-cheat property under real conditions: two requests
+  // racing each other must not both pass the cooldown gate. A sequential
+  // check-then-write (read nextBoosterAt, decide, write) would let both
+  // requests read the same not-yet-elapsed cooldown before either commits;
+  // the actual implementation closes this with an atomic conditional
+  // UPDATE (see database/models/boosters.ts) whose row lock serializes the
+  // two attempts, so only one can ever see its own write take effect.
+  it("only one of two simultaneous claims succeeds, and it costs exactly one boostersCollected increment", async () => {
+    const cookie = await registerAndLogin();
+    await api.put("/save").set("Cookie", cookie).send(TestData.VALID_SAVE);
+
+    const [resA, resB] = await Promise.all([
+      api.post("/boosters/claim").set("Cookie", cookie),
+      api.post("/boosters/claim").set("Cookie", cookie)
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 409]);
+
+    const save = await api.get("/save").set("Cookie", cookie);
+    // Exactly one booster ended up active, not two — the loser's write
+    // never landed.
+    expect(save.body.save.activeBoosters).toHaveLength(1);
+  });
+});
+
 describe("Booster endpoint - reclaiming refreshes rather than duplicates", () => {
   it("boostersCollected increments and a second successful claim (once cooldown has actually passed) never yields two active rows of the same type", async () => {
     // This test only asserts the invariant that matters without waiting out

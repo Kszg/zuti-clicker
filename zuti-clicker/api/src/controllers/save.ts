@@ -39,7 +39,11 @@ function isValidUnits(units: unknown): units is UnitInput[] {
 function isValidUpgrades(upgrades: unknown): upgrades is string[] | undefined {
   if (upgrades === undefined) return true;
   if (!Array.isArray(upgrades)) return false;
-  return upgrades.every((id) => isKnownUpgradeId(id));
+  if (!upgrades.every((id) => isKnownUpgradeId(id))) return false;
+  // A duplicate id would otherwise reach upsertSave's createMany and throw
+  // on UpgradeSave's (gameSaveId, upgradeId) unique constraint — a 500, not
+  // the 400 a present-but-invalid value must get.
+  return new Set(upgrades).size === upgrades.length;
 }
 
 // MySQL/MariaDB signed INT range — phdCount, prestigeCount, and runClicks are

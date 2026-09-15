@@ -345,6 +345,15 @@ describe("Save endpoints - upgrades validation", () => {
     expect(res.body.error).toBe(Responses.SAVE.INVALID_UPGRADES.body.error);
   });
 
+  it("regression: rejects a duplicate upgrade id with 400 rather than reaching Prisma and 500", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_INVALID_UPGRADES_DUPLICATE);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_UPGRADES.body.error);
+  });
+
   it("regression: a missing-fields body with an otherwise-valid upgrades array still returns MISSING_FIELDS", async () => {
     const res = await api
       .put("/save")

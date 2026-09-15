@@ -9,6 +9,10 @@ import {
 } from "../../constants/boosters";
 import { CONFERENCE_BADGE_DURATION_BONUS, DEPARTMENT_NEWSLETTER_COOLDOWN_BONUS } from "../../constants/upgrades";
 
+// Keep this algorithm in sync with frontend/src/utils/upgrades.ts's
+// pickWeightedBoosterId (the guest-mode mirror of this same selection) —
+// the BOOSTER_WEIGHTS constants already carry a sync comment, but the
+// selection logic itself doesn't share one across the boundary.
 function pickWeightedBoosterId(): BoosterId {
   const totalWeight = BOOSTER_IDS.reduce((sum, id) => sum + BOOSTER_WEIGHTS[id], 0);
   let roll = Math.random() * totalWeight;
@@ -78,15 +82,33 @@ export async function claimBooster(userId: number): Promise<ClaimResult> {
     const nextAvailableInMs = rollCooldownMs(ownedUpgradeIds);
     const nextBoosterAt = new Date(now.getTime() + nextAvailableInMs);
 
+    // Atomic conditional claim — this, not the read above, is what actually
+    // enforces the cooldown: the WHERE clause is re-checked against the
+    // row's live value at UPDATE time (InnoDB locks the row for the
+    // duration of the statement), so two requests racing the read above can
+    // no longer both pass. Only one updateMany can match before
+    // nextBoosterAt moves into the future; the loser's count is 0.
+    const claimed = await tx.gameSave.updateMany({
+      where: { id: save.id, nextBoosterAt: { lte: now } },
+      data: { nextBoosterAt, boostersCollected: { increment: 1 } }
+    });
+
+    if (claimed.count === 0) {
+      // Lost the race to a concurrent claim between the read above and this
+      // write — re-read so the reported cooldown reflects what actually won,
+      // not the stale value this request saw.
+      const fresh = await tx.gameSave.findUniqueOrThrow({ where: { id: save.id } });
+      return {
+        ok: false,
+        reason: "on_cooldown",
+        nextAvailableInMs: Math.max(0, fresh.nextBoosterAt.getTime() - Date.now())
+      };
+    }
+
     await tx.activeBooster.upsert({
       where: { gameSaveId_boosterId: { gameSaveId: save.id, boosterId } },
       create: { gameSaveId: save.id, boosterId, expiresAt },
       update: { expiresAt }
-    });
-
-    await tx.gameSave.update({
-      where: { id: save.id },
-      data: { nextBoosterAt, boostersCollected: { increment: 1 } }
     });
 
     return { ok: true, boosterId, remainingMs, nextAvailableInMs };
