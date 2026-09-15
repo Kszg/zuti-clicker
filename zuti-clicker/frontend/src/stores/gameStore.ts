@@ -1,6 +1,12 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { UNIT_DEFINITIONS, BASE_TOKENS_PER_CLICK, UNIT_REVEAL_FRACTION } from "@/utils/gameConstants";
+import {
+  UNIT_DEFINITIONS,
+  UPGRADE_DEFINITIONS,
+  BASE_TOKENS_PER_CLICK,
+  UNIT_REVEAL_FRACTION,
+  UPGRADE_REVEAL_FRACTION
+} from "@/utils/gameConstants";
 import { getUnitCost, getBulkCost, getMaxBuyable } from "@/utils/costCalculator";
 import {
   getPhdGain,
@@ -9,7 +15,19 @@ import {
   getTokensToNextPhd,
   getPrestigeProgress
 } from "@/utils/prestige";
-import type { UnitState, Multiplier } from "@/types";
+import {
+  getFlatClickBonus,
+  getClickMultiplier,
+  getClickSynergy,
+  getCritChance,
+  getCritMultiplier,
+  getBoosterDurationMultiplier,
+  getBoosterSpawnMultiplier,
+  getActiveBoosterMultiplier,
+  getClickValue,
+  rollCrit
+} from "@/utils/upgrades";
+import type { UnitState, Multiplier, ActiveBoosterState } from "@/types";
 
 export interface GameSaveInput {
   tokens: number;
@@ -23,6 +41,17 @@ export interface GameSaveInput {
   runSeconds?: number;
   phdCount?: number;
   prestigeCount?: number;
+  // Absent on saves written before the upgrades system existed.
+  upgrades?: string[];
+}
+
+// GET /save additionally carries read-only booster state that is NEVER part
+// of a PUT /save request body (see toSavePayload) — a client cannot assert or
+// extend a buff, only POST /boosters/claim can create one. `remainingMs`,
+// not an absolute timestamp: the client anchors it to its own clock the
+// instant it's loaded, so server/client clock skew can't extend a buff.
+export interface LoadedGameSave extends GameSaveInput {
+  activeBoosters?: { boosterId: string; remainingMs: number }[];
 }
 
 export const useGameStore = defineStore("game", () => {
@@ -43,7 +72,20 @@ export const useGameStore = defineStore("game", () => {
 
   const unitStates = ref<UnitState[]>(UNIT_DEFINITIONS.map((d) => ({ id: d.id, owned: 0 })));
 
+  // One-time click-power purchases — reset by prestige, same lifecycle as
+  // unitStates (see prestige() below).
+  const ownedUpgrades = ref<string[]>([]);
+
+  // Server-issued (or, for guests, locally rolled — see composables/useBoosters.ts)
+  // timed buffs. Survive prestige (a live buff is a timed event, not
+  // progression); cleared only by hardReset.
+  const activeBoosters = ref<ActiveBoosterState[]>([]);
+
   const productionMultiplier = computed(() => getProductionMultiplier(phdCount.value));
+  // PhD-only cost multiplier — kept as the permanent, prestige-derived figure
+  // that PrestigePanel/PrestigeConfirmModal display and compare before/after.
+  // A transient booster discount is folded in separately via
+  // effectiveCostMultiplier below, which is what purchases actually use.
   const costMultiplier = computed(() => getCostMultiplier(phdCount.value));
 
   const baseTokensPerSecond = computed(() =>
@@ -53,29 +95,75 @@ export const useGameStore = defineStore("game", () => {
     }, 0)
   );
 
-  const tokensPerSecond = computed(() => baseTokensPerSecond.value * productionMultiplier.value);
-  const tokensPerClick = computed(() => BASE_TOKENS_PER_CLICK * productionMultiplier.value);
+  // Click-power upgrade derivations (see utils/upgrades.ts for the formulas).
+  const flatClickBonus = computed(() => getFlatClickBonus(ownedUpgrades.value));
+  const clickMultiplier = computed(() => getClickMultiplier(ownedUpgrades.value));
+  const clickSynergy = computed(() => getClickSynergy(ownedUpgrades.value));
+  const critChance = computed(() => getCritChance(ownedUpgrades.value));
+  const critMultiplier = computed(() => getCritMultiplier(ownedUpgrades.value));
+  // Booster-system perks (affect how the booster system itself behaves, not
+  // the click formula directly) — read by composables/useBoosters.ts.
+  const boosterDurationMultiplier = computed(() => getBoosterDurationMultiplier(ownedUpgrades.value));
+  const boosterSpawnMultiplier = computed(() => getBoosterSpawnMultiplier(ownedUpgrades.value));
+
+  // Live-buff multipliers, derived from activeBoosters (see grantBooster and
+  // the expiry sweep in tick()). Date.now() is read fresh every time this
+  // recomputes, which only happens when activeBoosters.value itself changes
+  // (a new grant, or a sweep removing an expired entry) — the multiplier
+  // value has no reason to change in between, so this is not a "read the
+  // clock every frame" anti-pattern.
+  const boosterProductionMultiplier = computed(() =>
+    getActiveBoosterMultiplier(activeBoosters.value, Date.now(), "production")
+  );
+  const boosterClickMultiplier = computed(() =>
+    getActiveBoosterMultiplier(activeBoosters.value, Date.now(), "click")
+  );
+  const boosterCostMultiplier = computed(() =>
+    getActiveBoosterMultiplier(activeBoosters.value, Date.now(), "costReduction")
+  );
+  // What unit purchases actually pay: the permanent PhD discount stacked
+  // with any transient booster discount (see costMultiplier's comment above
+  // for why the two are kept separate).
+  const effectiveCostMultiplier = computed(() => costMultiplier.value * boosterCostMultiplier.value);
+
+  const tokensPerSecond = computed(
+    () => baseTokensPerSecond.value * productionMultiplier.value * boosterProductionMultiplier.value
+  );
+  // Non-crit expected click value — what StatusColumn's "Per Click" stat
+  // shows, and what clickToken() multiplies by critMultiplier on a crit roll.
+  const tokensPerClick = computed(() =>
+    getClickValue({
+      flatClickBonus: flatClickBonus.value,
+      clickMultiplier: clickMultiplier.value,
+      phdProductionMultiplier: productionMultiplier.value,
+      tokensPerSecond: tokensPerSecond.value,
+      clickSynergy: clickSynergy.value,
+      boosterClickMultiplier: boosterClickMultiplier.value
+    })
+  );
 
   const phdGain = computed(() => getPhdGain(runTokensEarned.value));
   const canPrestige = computed(() => phdGain.value >= 1);
   const prestigeProgress = computed(() => getPrestigeProgress(runTokensEarned.value));
   const tokensToNextPhd = computed(() => getTokensToNextPhd(runTokensEarned.value));
 
-  function clickToken(): number {
-    const earned = tokensPerClick.value;
+  function clickToken(): { earned: number; crit: boolean } {
+    const crit = rollCrit(critChance.value);
+    const earned = crit ? tokensPerClick.value * critMultiplier.value : tokensPerClick.value;
     tokens.value += earned;
     totalTokensEarned.value += earned;
     runTokensEarned.value += earned;
     totalClicks.value++;
     runClicks.value++;
-    return earned;
+    return { earned, crit };
   }
 
   function _resolveAmount(unitId: string, multiplier: Multiplier): number {
     const def = UNIT_DEFINITIONS.find((d) => d.id === unitId);
     if (!def) return 0;
     const owned = unitStates.value.find((u) => u.id === unitId)?.owned ?? 0;
-    if (multiplier === "max") return getMaxBuyable(def, owned, tokens.value, costMultiplier.value);
+    if (multiplier === "max")
+      return getMaxBuyable(def, owned, tokens.value, effectiveCostMultiplier.value);
     return multiplier;
   }
 
@@ -84,9 +172,11 @@ export const useGameStore = defineStore("game", () => {
     if (!def) return 0;
     const owned = unitStates.value.find((u) => u.id === unitId)?.owned ?? 0;
     const amount =
-      multiplier === "max" ? getMaxBuyable(def, owned, tokens.value, costMultiplier.value) : multiplier;
-    if (amount <= 0) return getUnitCost(def, owned, costMultiplier.value);
-    return getBulkCost(def, owned, amount, costMultiplier.value);
+      multiplier === "max"
+        ? getMaxBuyable(def, owned, tokens.value, effectiveCostMultiplier.value)
+        : multiplier;
+    if (amount <= 0) return getUnitCost(def, owned, effectiveCostMultiplier.value);
+    return getBulkCost(def, owned, amount, effectiveCostMultiplier.value);
   }
 
   function getProductionGain(unitId: string, multiplier: Multiplier): number {
@@ -100,8 +190,9 @@ export const useGameStore = defineStore("game", () => {
     const def = UNIT_DEFINITIONS.find((d) => d.id === unitId);
     if (!def) return false;
     const owned = unitStates.value.find((u) => u.id === unitId)?.owned ?? 0;
-    if (multiplier === "max") return getMaxBuyable(def, owned, tokens.value, costMultiplier.value) > 0;
-    return getBulkCost(def, owned, multiplier, costMultiplier.value) <= tokens.value;
+    if (multiplier === "max")
+      return getMaxBuyable(def, owned, tokens.value, effectiveCostMultiplier.value) > 0;
+    return getBulkCost(def, owned, multiplier, effectiveCostMultiplier.value) <= tokens.value;
   }
 
   function buyUnit(unitId: string, multiplier: Multiplier): boolean {
@@ -111,14 +202,65 @@ export const useGameStore = defineStore("game", () => {
     if (!state) return false;
     const amount =
       multiplier === "max"
-        ? getMaxBuyable(def, state.owned, tokens.value, costMultiplier.value)
+        ? getMaxBuyable(def, state.owned, tokens.value, effectiveCostMultiplier.value)
         : multiplier;
     if (amount <= 0) return false;
-    const cost = getBulkCost(def, state.owned, amount, costMultiplier.value);
+    const cost = getBulkCost(def, state.owned, amount, effectiveCostMultiplier.value);
     if (tokens.value < cost) return false;
     tokens.value -= cost;
     state.owned += amount;
     return true;
+  }
+
+  /**
+   * Reveal is a one-way discovery gate, not an affordability gate — same rule
+   * as isUnitRevealed, keyed to the upgrade's own (undiscounted) cost.
+   */
+  function isUpgradeRevealed(upgradeId: string): boolean {
+    const def = UPGRADE_DEFINITIONS.find((d) => d.id === upgradeId);
+    if (!def) return false;
+    return totalTokensEarned.value >= def.cost * UPGRADE_REVEAL_FRACTION;
+  }
+
+  function isUpgradeOwned(upgradeId: string): boolean {
+    return ownedUpgrades.value.includes(upgradeId);
+  }
+
+  function canAffordUpgrade(upgradeId: string): boolean {
+    const def = UPGRADE_DEFINITIONS.find((d) => d.id === upgradeId);
+    if (!def || isUpgradeOwned(upgradeId)) return false;
+    return tokens.value >= def.cost;
+  }
+
+  /** One-time purchase. Returns false (and mutates nothing) if unknown, already owned, or unaffordable. */
+  function buyUpgrade(upgradeId: string): boolean {
+    const def = UPGRADE_DEFINITIONS.find((d) => d.id === upgradeId);
+    if (!def || isUpgradeOwned(upgradeId)) return false;
+    if (tokens.value < def.cost) return false;
+    tokens.value -= def.cost;
+    ownedUpgrades.value.push(upgradeId);
+    return true;
+  }
+
+  /**
+   * Applies a claimed/rolled booster. `remainingMs` (not an absolute expiry)
+   * so the caller — the server's claim response, or a guest's local roll —
+   * never hands this store a timestamp to blindly trust; it's anchored to
+   * Date.now() right here, at the moment of grant. Reclaiming an
+   * already-active booster refreshes its timer rather than stacking a second entry.
+   */
+  function grantBooster(boosterId: string, remainingMs: number): void {
+    const expiresAt = Date.now() + Math.max(0, remainingMs);
+    const existing = activeBoosters.value.find((b) => b.id === boosterId);
+    if (existing) existing.expiresAt = expiresAt;
+    else activeBoosters.value.push({ id: boosterId, expiresAt });
+  }
+
+  function _sweepExpiredBoosters(): void {
+    const now = Date.now();
+    if (activeBoosters.value.some((b) => b.expiresAt <= now)) {
+      activeBoosters.value = activeBoosters.value.filter((b) => b.expiresAt > now);
+    }
   }
 
   function tick(delta: number) {
@@ -128,6 +270,7 @@ export const useGameStore = defineStore("game", () => {
     runTokensEarned.value += earned;
     elapsedSeconds.value += delta;
     runSeconds.value += delta;
+    _sweepExpiredBoosters();
   }
 
   /**
@@ -156,6 +299,10 @@ export const useGameStore = defineStore("game", () => {
     unitStates.value.forEach((u) => {
       u.owned = 0;
     });
+    // Upgrades are run-scoped, like units — a fresh run rebuilds its own
+    // click power from scratch. Active boosters are a timed event, not
+    // progression, so they are deliberately left untouched here.
+    ownedUpgrades.value = [];
     return gained;
   }
 
@@ -173,9 +320,11 @@ export const useGameStore = defineStore("game", () => {
     unitStates.value.forEach((u) => {
       u.owned = 0;
     });
+    ownedUpgrades.value = [];
+    activeBoosters.value = [];
   }
 
-  function loadFromSave(save: GameSaveInput): void {
+  function loadFromSave(save: LoadedGameSave): void {
     tokens.value = save.tokens;
     totalTokensEarned.value = save.totalTokensEarned;
     totalClicks.value = save.totalClicks;
@@ -195,6 +344,13 @@ export const useGameStore = defineStore("game", () => {
       const state = unitStates.value.find((u) => u.id === unitId);
       if (state) state.owned = owned;
     }
+    ownedUpgrades.value = save.upgrades ?? [];
+    // Anchor each restored booster's remaining time to THIS client's clock,
+    // right now — never trust a stored/served absolute timestamp directly.
+    activeBoosters.value = (save.activeBoosters ?? []).map((b) => ({
+      id: b.boosterId,
+      expiresAt: Date.now() + Math.max(0, b.remainingMs)
+    }));
   }
 
   function toSavePayload(): GameSaveInput {
@@ -208,7 +364,8 @@ export const useGameStore = defineStore("game", () => {
       runSeconds: runSeconds.value,
       phdCount: phdCount.value,
       prestigeCount: prestigeCount.value,
-      units: unitStates.value.map((u) => ({ unitId: u.id, owned: u.owned }))
+      units: unitStates.value.map((u) => ({ unitId: u.id, owned: u.owned })),
+      upgrades: ownedUpgrades.value.slice()
     };
   }
 
@@ -223,11 +380,24 @@ export const useGameStore = defineStore("game", () => {
     phdCount,
     prestigeCount,
     unitStates,
+    ownedUpgrades,
+    activeBoosters,
     productionMultiplier,
     costMultiplier,
+    effectiveCostMultiplier,
     baseTokensPerSecond,
     tokensPerSecond,
     tokensPerClick,
+    flatClickBonus,
+    clickMultiplier,
+    clickSynergy,
+    critChance,
+    critMultiplier,
+    boosterDurationMultiplier,
+    boosterSpawnMultiplier,
+    boosterProductionMultiplier,
+    boosterClickMultiplier,
+    boosterCostMultiplier,
     phdGain,
     canPrestige,
     prestigeProgress,
@@ -237,6 +407,11 @@ export const useGameStore = defineStore("game", () => {
     getProductionGain,
     canAfford,
     buyUnit,
+    isUpgradeRevealed,
+    isUpgradeOwned,
+    canAffordUpgrade,
+    buyUpgrade,
+    grantBooster,
     tick,
     isUnitRevealed,
     prestige,

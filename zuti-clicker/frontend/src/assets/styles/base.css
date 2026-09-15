@@ -54,6 +54,12 @@
   --success: #22c55e;
   --danger:  #f87171;
 
+  /* The one "rare/special" accent in an otherwise all-blue palette — booster
+     pickups/active-buff pills and critical clicks (see FloatingNumber.vue,
+     BoosterPickup.vue, ActiveBoostersBar.vue). */
+  --booster:      #fbbf24;
+  --booster-glow: rgba(251, 191, 36, 0.35);
+
   --scrollbar-thumb: #1e3a5f;
 }
 
@@ -84,6 +90,9 @@
 
   --success: #16a34a;
   --danger:  #dc2626;
+
+  --booster:      #d97706;
+  --booster-glow: rgba(217, 119, 6, 0.22);
 
   --scrollbar-thumb: #bfdbfe;
 }
