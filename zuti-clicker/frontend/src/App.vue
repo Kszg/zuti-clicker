@@ -42,7 +42,7 @@ watch(isCompact, (compact) => {
 });
 
 async function onKeydown(e: KeyboardEvent) {
-  if (e.altKey && e.code === 'KeyX') {
+  if (!e.repeat && e.altKey && e.code === "KeyX") {
     await save.resetSave();
     await auth.logout();
   }
