@@ -1,4 +1,4 @@
-import type { UnitDefinition } from "@/types";
+import type { SkinDefinition, UnitDefinition } from "@/types";
 
 export const UNIT_DEFINITIONS: UnitDefinition[] = [
   { id: "alpha", baseCost: 10, baseProduction: 0.3, costGrowth: 1.15 },
@@ -10,6 +10,15 @@ export const UNIT_DEFINITIONS: UnitDefinition[] = [
   { id: "eta", baseCost: 20_000_000, baseProduction: 6_000, costGrowth: 1.15 },
   { id: "theta", baseCost: 330_000_000, baseProduction: 30_000, costGrowth: 1.15 }
 ];
+
+export const SKIN_DEFINITIONS: SkinDefinition[] = [
+  {
+    id: "sahur",
+    cost: 67_676_767,
+    imagePath: "sahur.jpg",
+    audioPath: null
+  }
+]
 
 export const TICK_RATE = 20;
 export const BASE_TOKENS_PER_CLICK = 1;

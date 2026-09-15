@@ -54,7 +54,10 @@ export default {
     }
   },
   skin: {
-    title: "Kinézetek"
+    title: "Kinézetek",
+    names: {
+      sahur: "Tung Tung Tung Sahur"
+    }
   },
   settings: {
     toggleTheme: "Téma váltás",

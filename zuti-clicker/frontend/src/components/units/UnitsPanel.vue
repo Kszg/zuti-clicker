@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
+import { SKIN_DEFINITIONS, UNIT_DEFINITIONS } from "@/utils/gameConstants";
 import MultiplierSelector from "./MultiplierSelector.vue";
 import UnitCard from "./UnitCard.vue";
 import SkinCard from "./SkinCard.vue";
@@ -32,7 +32,11 @@ const multiplier = ref<Multiplier>(1);
       <span class="panel-title">{{ t("skin.title") }}</span>
     </div>
 
-    <SkinCard/>
+    <SkinCard
+      v-for="skin in SKIN_DEFINITIONS"
+      :key="skin.id"
+      :skin-id="skin.id"
+    />
   </aside>
 </template>
 

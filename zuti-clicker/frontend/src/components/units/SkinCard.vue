@@ -1,5 +1,38 @@
 <script setup lang="ts">
 import { computed, ref, useId, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
+import { useGameStore } from "@/stores/gameStore";
+import { SKIN_DEFINITIONS } from "@/utils/gameConstants";
+import { formatNumber } from "@/utils/formatters";
+import { SkinButtonState } from "@/types";
+
+const props = defineProps<{ skinId: string }>();
+
+const { t } = useI18n();
+const game = useGameStore();
+
+const def = computed(() => SKIN_DEFINITIONS.find((d) => d.id === props.skinId)!);
+const state = computed(() => game.skinStates.find((u) => u.id === props.skinId)!);
+const owned = computed(() => state.value.owned ?? false);
+
+const nameKey = computed(() => `skin.names.${props.skinId}` as Parameters<typeof t>[0]);
+const imgPath = computed(
+  () => new URL(`../../assets/images/skin/${def.value.imagePath}`, import.meta.url).href,
+);
+
+const buttonState = computed(() => {
+  if (game.activeSkinId === props.skinId) {
+    return SkinButtonState.Active;
+  }
+  else {
+    if (owned) {
+      return SkinButtonState.Owned;
+    }
+    else {
+      return SkinButtonState.Buyable;
+    }
+  }
+})
 </script>
 
 <template>
@@ -8,15 +41,27 @@ import { computed, ref, useId, onUnmounted } from "vue";
       <!-- left: info -->
       <div class="skin-info">
         <div class="skin-name-row">
-          <img class="skin-thumbnail" src="@/assets/images/skin/sahur.jpg" alt="">
-          <span class="skin-name">Tung Tung Tung Sahur</span>
+          <img class="skin-thumbnail" :src="imgPath" :alt="t(nameKey)">
+          <span class="skin-name">{{ t(nameKey) }}</span>
         </div>
       </div>
 
       <!-- right: buy button -->
-      <button class="buy-btn">
-        <span class="btn-mult">Buy</span>
-        <span class="btn-cost">67</span>
+      <button class="buy-btn" :disabled="buttonState === SkinButtonState.Active">
+        <div class="btn-cond-wrapper" v-if="buttonState == SkinButtonState.Buyable">
+          <span class="btn-mult">Buy</span>
+          <span class="btn-cost">{{ formatNumber(def.cost) }}</span>
+        </div>
+
+        <div class="btn-cond-wrapper" v-if="buttonState == SkinButtonState.Owned">
+          <span class="btn-mult">Use</span>
+          <span class="btn-cost"> </span>
+        </div>
+
+        <div class="btn-cond-wrapper" v-if="buttonState == SkinButtonState.Active">
+          <span class="btn-mult">Active</span>
+          <span class="btn-cost"> </span>
+        </div>
       </button>
     </div>
   </Transition>
@@ -184,6 +229,10 @@ import { computed, ref, useId, onUnmounted } from "vue";
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
+}
+
+.btn-cond-wrapper > span {
+  display: block;
 }
 
 @media (max-width: 759px) {

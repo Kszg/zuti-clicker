@@ -54,7 +54,10 @@ export default {
     }
   },
   skin: {
-    title: "Skins"
+    title: "Skins",
+    names: {
+      sahur: "Tung Tung Tung Sahur"
+    }
   },
   settings: {
     toggleTheme: "Toggle theme",

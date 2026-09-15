@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { UNIT_DEFINITIONS, BASE_TOKENS_PER_CLICK, UNIT_REVEAL_FRACTION } from "@/utils/gameConstants";
+import { UNIT_DEFINITIONS, BASE_TOKENS_PER_CLICK, UNIT_REVEAL_FRACTION, SKIN_DEFINITIONS } from "@/utils/gameConstants";
 import { getUnitCost, getBulkCost, getMaxBuyable } from "@/utils/costCalculator";
 import {
   getPhdGain,
@@ -9,7 +9,7 @@ import {
   getTokensToNextPhd,
   getPrestigeProgress
 } from "@/utils/prestige";
-import type { UnitState, Multiplier } from "@/types";
+import type { UnitState, Multiplier, SkinState } from "@/types";
 
 export interface GameSaveInput {
   tokens: number;
@@ -60,6 +60,10 @@ export const useGameStore = defineStore("game", () => {
   const canPrestige = computed(() => phdGain.value >= 1);
   const prestigeProgress = computed(() => getPrestigeProgress(runTokensEarned.value));
   const tokensToNextPhd = computed(() => getTokensToNextPhd(runTokensEarned.value));
+
+  // Skins
+  const skinStates = ref<SkinState[]>(SKIN_DEFINITIONS.map((d) => ({ id: d.id, owned: false })));
+  const activeSkinId = ref("");
 
   function clickToken(): number {
     const earned = tokensPerClick.value;
@@ -232,6 +236,8 @@ export const useGameStore = defineStore("game", () => {
     canPrestige,
     prestigeProgress,
     tokensToNextPhd,
+    skinStates,
+    activeSkinId,
     clickToken,
     getBuyCost,
     getProductionGain,
