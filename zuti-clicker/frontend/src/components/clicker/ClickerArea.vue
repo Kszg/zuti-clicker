@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { CPS_WINDOW_MS } from "@/utils/gameConstants";
@@ -32,6 +32,26 @@ let uid = 0;
 const clickTimestamps = ref<number[]>([]);
 const cps = ref(0);
 
+// Pruning (and therefore decaying `cps` back toward 0) only happened inside
+// onCircleClick, so it never re-ran once the player stopped clicking — the
+// pill would freeze at its last value instead of disappearing. A light
+// interval keeps it live regardless of whether new clicks are coming in.
+function recomputeCps(): void {
+  const cutoff = performance.now() - CPS_WINDOW_MS;
+  while (clickTimestamps.value.length > 0 && clickTimestamps.value[0]! < cutoff) {
+    clickTimestamps.value.shift();
+  }
+  cps.value = clickTimestamps.value.length / (CPS_WINDOW_MS / 1000);
+}
+
+let cpsInterval: ReturnType<typeof setInterval> | null = null;
+onMounted(() => {
+  cpsInterval = setInterval(recomputeCps, 250);
+});
+onUnmounted(() => {
+  if (cpsInterval !== null) clearInterval(cpsInterval);
+});
+
 function onCircleClick({ x, y }: { x: number; y: number }) {
   const { earned, crit } = game.clickToken();
   const id = uid++;
@@ -47,13 +67,8 @@ function onCircleClick({ x, y }: { x: number; y: number }) {
     if (i !== -1) floats.value.splice(i, 1);
   }, 780);
 
-  const now = performance.now();
-  clickTimestamps.value.push(now);
-  const cutoff = now - CPS_WINDOW_MS;
-  while (clickTimestamps.value.length > 0 && clickTimestamps.value[0]! < cutoff) {
-    clickTimestamps.value.shift();
-  }
-  cps.value = clickTimestamps.value.length / (CPS_WINDOW_MS / 1000);
+  clickTimestamps.value.push(performance.now());
+  recomputeCps();
 }
 </script>
 

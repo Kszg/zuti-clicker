@@ -110,6 +110,7 @@ export default {
   boosters: {
     pickupAriaLabel: "Rejtélyes booster begyűjtése",
     claimedToast: "{name} aktiválva!",
+    claimFailed: "Nem sikerült begyűjteni a boostert — próbáld újra később.",
     names: {
       frenzy: "Értékelési Roham",
       clickStorm: "Röpdolgozat",

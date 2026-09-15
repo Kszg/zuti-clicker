@@ -122,11 +122,20 @@ export function useBoosters() {
         announce(res.boosterId);
         scheduleNextSpawn(res.nextAvailableInMs);
       } catch (e) {
-        // A 409 here means the local schedule fired slightly ahead of the
-        // server's actual cooldown (see module doc) — no tokens or progress
-        // are at stake, just re-sync from the server's own remaining time.
-        const body = e instanceof ApiError ? (e.body as { nextAvailableInMs?: number } | undefined) : undefined;
-        scheduleNextSpawn(body?.nextAvailableInMs);
+        if (e instanceof ApiError && e.status === 409) {
+          // The local schedule fired slightly ahead of the server's actual
+          // cooldown (see module doc) — no tokens or progress are at stake,
+          // just re-sync from the server's own remaining time.
+          const body = e.body as { nextAvailableInMs?: number } | undefined;
+          scheduleNextSpawn(body?.nextAvailableInMs);
+        } else {
+          // Anything else (expired session, network failure, server error)
+          // is a real problem the player should be told about, not silently
+          // retried forever — same "surface it, don't swallow it" pattern
+          // saveStore/SettingsModal already use for a failed sync.
+          toast.push("error", t("boosters.claimFailed"));
+          scheduleNextSpawn();
+        }
       }
     } else {
       // Guest: fully local, matching the server's own weighting/duration

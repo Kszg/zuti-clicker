@@ -110,6 +110,7 @@ export default {
   boosters: {
     pickupAriaLabel: "Claim a mystery booster",
     claimedToast: "{name} activated!",
+    claimFailed: "Couldn't claim the booster — try again later.",
     names: {
       frenzy: "Grading Frenzy",
       clickStorm: "Pop Quiz",

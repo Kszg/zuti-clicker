@@ -132,7 +132,9 @@ export function rollCrit(critChance: number, rng: () => number = Math.random): b
  * rolls (see composables/useBoosters.ts). A logged-in player's roll happens
  * server-side (POST /boosters/claim) for the anti-cheat reasons in the plan
  * this implements; this is the client-side mirror of that same weighting so
- * guest play feels identical without a server round-trip.
+ * guest play feels identical without a server round-trip. Keep this
+ * algorithm in sync with api/src/database/models/boosters.ts's own
+ * pickWeightedBoosterId.
  */
 export function pickWeightedBoosterId(rng: () => number = Math.random): string {
   const totalWeight = BOOSTER_DEFINITIONS.reduce((sum, d) => sum + d.weight, 0);
