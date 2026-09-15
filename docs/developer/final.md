@@ -147,11 +147,14 @@ router/ → controllers/ → database/models/ → Prisma → MariaDB
 |---|---|---|---|
 | `POST` | `/auth/register`, `/auth/login`, `/auth/logout` | – / kötelező | Regisztráció, bejelentkezés, kijelentkezés |
 | `GET` | `/auth/me` | kötelező | Bejelentkezett felhasználó adatai |
-| `GET`, `PUT`, `DELETE` | `/save` | kötelező | Játékmentés betöltése, felülírása (részlegesen: a prestige mezők opcionálisak), törlése |
+| `GET`, `PUT`, `DELETE` | `/save` | kötelező | Játékmentés betöltése, felülírása (részlegesen: a prestige mezők és a fejlesztések listája opcionálisak), törlése |
 | `GET`, `PUT` | `/settings` | kötelező | Felhasználói beállítások betöltése (alapértékek, ha még nincs mentve) és részleges frissítése |
 | `GET` | `/leaderboard` | kötelező | Rangsor egy adott mérőszám szerint (`tokens`, `clicks`, `phd`, `playtime`), plusz a lekérdező saját helyezése |
+| `POST` | `/boosters/claim` | kötelező | Egy véletlenszerű booster igénylése, ha a lehűlési idő már letelt — lásd lent, "Booster anti-cheat modell" |
 
 A `PUT /save` öt prestige-mezője (`phdCount`, `prestigeCount`, `runTokensEarned`, `runClicks`, `runSeconds`) **opcionális**: egy régebbi kliens, amely nem ismeri ezeket, biztonságosan tud menteni — a hiányzó mezőket a szerver a már tárolt értéken hagyja (nem nullázza), első mentésnél pedig az életút-mezőkből tölti fel őket.
+
+Egy hatodik, szintén opcionális mező, az `upgrades` (megszerzett fejlesztés-azonosítók tömbje) ugyanezt a mintát követi: hiányzása esetén a szerver a már tárolt fejlesztéseket változatlanul hagyja, jelenléte esetén viszont — az `units` mezőhöz hasonlóan — teljesen felülírja őket. Minden elemének egy ismert fejlesztés-azonosítónak kell lennie (`api/src/constants/upgrades.ts`'s `KNOWN_UPGRADE_IDS`), különben a végpont `400`-at ad vissza. A `GET /save` válasza az `upgrades` mellett egy csak-olvasható `activeBoosters` tömböt is tartalmaz (a jelenleg aktív boosterek, `remainingMs` hátralévő idővel) — ezt a `PUT /save` sosem fogadja el, kizárólag a `POST /boosters/claim` hozhatja létre vagy frissítheti.
 
 ### Frontend state management
 
@@ -159,15 +162,18 @@ A `PUT /save` öt prestige-mezője (`phdCount`, `prestigeCount`, `runTokensEarne
 App.vue
   ├── useGameLoop()          → gameStore.tick() 20x/s
   ├── usePrestige()          → gameStore.prestige() -> ceremónia/szinkron
+  ├── useBoosters()          → booster pickup ütemezése (spawn/láthatósági ablak) + igénylés
   ├── useBreakpoint()        → isCompact (matchMedia, < 760px)
   ├── authStore              → session check, login/register/logout
   ├── settingsStore          → téma, nyelv, autosave, ceremónia — localStorage + szerver szinkron
   ├── saveStore               → load/sync/reset (autosave-időzítő a settingsStore-ból olvas)
-  ├── uiStore                → modál állapotok, mobilePanel ("none" | "stats" | "units")
-  ├── toastStore             → átmeneti értesítések (pl. beállítások mentése)
+  ├── uiStore                → modál állapotok, mobilePanel ("none" | "stats" | "units"), shopTab ("units" | "upgrades")
+  ├── toastStore             → átmeneti értesítések (pl. beállítások mentése, booster begyűjtése)
   ├── leaderboardStore       → mérőszámonkénti rangsor lekérése (nincs localStorage-gyorsítótár, mindig a szerver a forrás)
-  └── gameStore              → tokenek, egységek, statisztikák, prestige állapot
+  └── gameStore              → tokenek, egységek, fejlesztések (upgrades), aktív boosterek, statisztikák, prestige állapot
 ```
+
+A `ClickerArea.vue` (középső oszlop) hívja meg a `useBoosters()` composable-t — ez tartja karban a véletlenszerű booster-pickup teljes életciklusát (mikor jelenik meg, meddig látható, mi történik kattintáskor); a `BoosterPickup.vue` és `ActiveBoostersBar.vue` komponensek ebből olvasnak. A tényleges booster-effektus (termelés-/kattintás-szorzó, egységár-kedvezmény) a `gameStore.activeBoosters` állapoton keresztül érvényesül — lásd lent, "Booster anti-cheat modell".
 
 A `saveStore` a `authStore`-tól és a `settingsStore`-tól függ: az autosave-időzítő automatikusan elindul/leáll, amikor `isLoggedIn`, `autosaveEnabled` vagy `autosaveIntervalSecs` megváltozik. A `settingsStore` sosem importálja a `saveStore`-t (a függőségi irány mindig `settings → save`, nem fordítva), hogy elkerülje a körkörös importot.
 
@@ -214,6 +220,104 @@ descriptions: { ..., iota: "Leírás..." }
 ```
 
 Az egység azonnal megjelenik a shopban (a láthatóság automatikusan számított: `totalTokensEarned >= baseCost * 0.1`).
+
+---
+
+## Új fejlesztés (upgrade) hozzáadása
+
+A fejlesztések (upgrade-ek) egyszeri megvásárlású, prestige-kor elvesző
+kattintás-erő bónuszok — lásd `frontend/src/stores/gameStore.ts`
+`ownedUpgrades`/`buyUpgrade` és a képleteket a
+`frontend/src/utils/upgrades.ts`-ben.
+
+1. Szerkeszd a `frontend/src/utils/gameConstants.ts` fájlt, adj hozzá egy új
+   elemet a `UPGRADE_DEFINITIONS` tömbhöz — a `family` mező határozza meg,
+   melyik képlet dolgozza fel (`flat`/`multiplier`/`synergy`/`crit`/
+   `boosterDuration`/`boosterSpawn`, lásd `upgrades.ts`):
+
+```typescript
+{ id: "guestLecturer", family: "flat", cost: 8_000_000, effect: 500 }
+```
+
+2. Add hozzá az azonosítót az **API** oldalán is a
+   `api/src/constants/upgrades.ts` fájl `KNOWN_UPGRADE_IDS` tömbjéhez — a
+   `PUT /save` ez ellen a lista ellen validál, egy nem szereplő azonosító
+   `400`-at eredményez.
+3. Adj hozzá fordítási kulcsokat mindkét i18n fájlhoz (`src/i18n/en.ts`,
+   `hu.ts`), `upgrades.names.<id>` és `upgrades.descriptions.<id>` alatt.
+
+A fejlesztés azonnal megjelenik a boltban (a láthatóság ugyanaz a
+felfedezési logika, mint az egységeknél: `totalTokensEarned >= cost *
+UPGRADE_REVEAL_FRACTION`), a megfelelő családi csoportban
+(`UpgradesPanel.vue`).
+
+---
+
+## Új booster hozzáadása
+
+A boosterek időzített, szerver által kiadott bónuszok — lásd "Booster
+anti-cheat modell" lentebb a teljes életciklusért.
+
+1. Szerkeszd a `frontend/src/utils/gameConstants.ts` fájlt, adj hozzá egy új
+   elemet a `BOOSTER_DEFINITIONS` tömbhöz (`kind`: `production`/`click`/
+   `costReduction`):
+
+```typescript
+{ id: "guestSpeaker", kind: "production", multiplier: 4, durationSecs: 90, weight: 2 }
+```
+
+2. Tükrözd ugyanezt az **API** oldalán az `api/src/constants/boosters.ts`
+   fájl `BOOSTER_IDS`/`BOOSTER_WEIGHTS`/`BOOSTER_DURATION_SECS`
+   objektumaiban — a tényleges kiválasztás és időzítés szerver oldalon
+   történik (`database/models/boosters.ts`), ez a másolat a forrása.
+3. Adj hozzá fordítási kulcsot mindkét i18n fájlhoz,
+   `boosters.names.<id>` alatt (a leírás/hatás szövege jelenleg nincs
+   külön kulcsban, az `ActiveBoostersBar.vue` és a claimedToast csak a nevet
+   jeleníti meg).
+
+---
+
+## Booster anti-cheat modell
+
+A kattintás-gazdaság (tokenek, egységek, fejlesztések) továbbra is teljesen
+kliens-oldali és kliens-hiteles — ennek szerver-oldalivá tétele egy jóval
+nagyobb átalakítás lenne. A boosterek viszont közvetlenül a ranglistákat
+torzíthatnák (aki gyakrabban tud "booster-farmolni", végérvényesen jobb
+statisztikákat ér el), ezért **kizárólag ez a rész szerver-hiteles**:
+
+- A `PUT /save` **sosem fogad el aktív booster állapotot** — a `GameSave`
+  modellben az `activeBoosters` reláció csak a `POST /boosters/claim`
+  végponton keresztül írható.
+- A `POST /boosters/claim` **nem fogad kérés-törzset**: a szerver saját maga
+  választja ki a boostert (súlyozott véletlen, `constants/boosters.ts`), és
+  a saját órájából számítja ki a lejárati időt. A kliens nem választhat jobb
+  boostert, és nem hosszabbíthatja meg a sajátját.
+- A lehűlési idő (`GameSave.nextBoosterAt`) az egyetlen kapu: egy igénylés
+  csak akkor sikeres, ha `most >= nextBoosterAt`. Sikeres igénylés után a
+  szerver egy új, `60`–`300` másodperc közötti véletlen intervallumra
+  állítja be ezt a mezőt. Az ismételt, gyors igénylés-spam így legfeljebb
+  ugyanannyi boostert eredményez, mint a szabályos játék — nincs külön
+  "spawn ablak", nincs órakülönbség-kezelés, egyetlen összehasonlítás elég.
+- A kliens **sosem lát abszolút lejárati időt** — a válaszok (és a
+  `GET /save` `activeBoosters` mezője is) `remainingMs`-t adnak vissza, amit
+  a kliens a saját órájához rögzít (`gameStore.grantBooster`,
+  `loadFromSave`). Egy órakülönbség így nem hosszabbíthatja meg a bónuszt.
+- Egy kihagyott pickup semmibe sem kerül, csak időbe — a lehűlés csakis egy
+  sikeres igényléskor változik.
+
+**Elfogadott, dokumentált korlát**: a `conferenceBadge`/
+`departmentNewsletter` fejlesztések hatását (booster-időtartam, illetve
+-lehűlés csökkentése) a szerver a játékos saját (kliens által állított, de
+szerveren tárolt) `UpgradeSave` sorai alapján olvassa vissza. Egy hamisított
+fejlesztés-birtoklás így legfeljebb azt éri el, amit a játékos amúgy is
+jogszerűen megvehetett volna — ez korlátozott és arányos kockázat, a teljes
+lezárásához a kattintás-gazdaság szerver-hitelessé tétele kellene, ami nem
+része ennek a változtatásnak.
+
+A frontend oldalon a `composables/useBoosters.ts` felelős a pickup
+megjelenési ütemezéséért (mindig kliens-oldali becslés, súlyozott ugyanúgy,
+mint a szerver saját elosztása) és az igénylésért; részletek a fájl saját
+kommentjeiben.
 
 ---
 
@@ -281,6 +385,17 @@ mérőszám-kulcsot a frontend oldalán is: `frontend/src/types/index.ts`
 ## Prestige egyensúly (balance) állandók módosítása
 
 A PhD-formula és a szorzók egyetlen helyen, a `frontend/src/utils/gameConstants.ts` fájlban vannak (`PHD_TOKEN_SCALE`, `PHD_PRODUCTION_BONUS`, `PHD_COST_REDUCTION`, `PHD_COST_REDUCTION_CAP`); a képletek maguk a `frontend/src/utils/prestige.ts`-ben. Egy balance-módosítás után futtasd le a `frontend/src/utils/__tests__/prestige.spec.ts` és `costCalculator.spec.ts` teszteket — ezek konkrét, számított határértékeket ellenőriznek, amik a konstansok módosításával változni fognak.
+
+Hasonlóan, a kattintás-erő (fejlesztések) és a boosterek minden balance-száma
+is a `gameConstants.ts`-ben lakik (`UPGRADE_DEFINITIONS`, `BOOSTER_DEFINITIONS`,
+`UPGRADE_REVEAL_FRACTION`, a `BOOSTER_SPAWN_*`/`BOOSTER_VISIBLE_*`
+időablakok), a képletek a `frontend/src/utils/upgrades.ts`-ben. A tervezett
+célérték: teljesen felfejlesztve, kb. 5 kattintás/másodperces tempó mellett
+a kattintás kb. +25%-kal növelje az idle bevételt az egyáltalán nem
+kattintó esethez képest — egy balance-módosítás után ezt egy rövid,
+szimulált menetet futtató szkripttel érdemes ellenőrizni, ne csak a
+`frontend/src/utils/__tests__/upgrades.spec.ts` egységteszteket lefuttatva
+(azok a képleteket, nem az egész gazdaság egyensúlyát ellenőrzik).
 
 ---
 

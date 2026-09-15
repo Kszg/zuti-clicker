@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, useId, onUnmounted } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useGameStore } from "@/stores/gameStore";
 import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
 import { getMaxBuyable } from "@/utils/costCalculator";
 import { formatNumber, formatRate } from "@/utils/formatters";
+import { useAnchoredTooltip } from "@/composables/useAnchoredTooltip";
+import TooltipCard from "@/components/shared/TooltipCard.vue";
 import type { Multiplier } from "@/types";
 
 const props = defineProps<{ unitId: string; multiplier: Multiplier }>();
@@ -19,7 +21,7 @@ const owned = computed(() => state.value?.owned ?? 0);
 const effectiveAmount = computed(() => {
   if (!def.value) return 0;
   if (props.multiplier === "max") {
-    return getMaxBuyable(def.value, owned.value, game.tokens, game.costMultiplier);
+    return getMaxBuyable(def.value, owned.value, game.tokens, game.effectiveCostMultiplier);
   }
   return props.multiplier;
 });
@@ -52,62 +54,18 @@ const btnLabel = computed(() => {
 // hovering anywhere else already opened it). Keyboard Tab focuses the
 // button directly; a touch tap also focuses it (that's how touch reveals
 // it), and tapping elsewhere blurs it closed, a natural dismiss with no
-// extra affordance needed.
-const hovered = ref(false);
-const focused = ref(false);
-const tooltipVisible = computed(() => hovered.value || focused.value);
-const tooltipId = useId();
-
-// Positioned via a viewport-relative rect rather than `right: calc(100% +
-// 10px)` (the old approach): that hangs the tooltip into the rail's *left*
-// neighbor, which is fine on the desktop 3-column shell but runs the
-// tooltip off-screen once UnitsPanel becomes a near-full-width mobile sheet.
-// Computing this from the info button's own rect — and teleporting the
-// tooltip to <body> — works the same in both layouts and isn't clipped by
-// the sheet's `overflow-y: auto` or (at mobile widths) the sheet's own
-// `transform`, which would otherwise redefine the containing block for a
-// plain `position: fixed` descendant.
-const infoBtnRef = ref<HTMLElement | null>(null);
-const tooltipStyle = ref<{ top: string; left: string } | null>(null);
-const TOOLTIP_WIDTH = 220;
-const VIEWPORT_MARGIN = 8;
-
-function positionTooltip() {
-  const el = infoBtnRef.value;
-  if (!el) return;
-  const rect = el.getBoundingClientRect();
-  const width = Math.min(TOOLTIP_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
-  let left = rect.left + rect.width / 2 - width / 2;
-  left = Math.max(VIEWPORT_MARGIN, Math.min(left, window.innerWidth - width - VIEWPORT_MARGIN));
-  tooltipStyle.value = { top: `${rect.bottom + 8}px`, left: `${left}px` };
-}
-
-function onInfoEnter() {
-  hovered.value = true;
-  positionTooltip();
-}
-
-function onInfoFocus() {
-  focused.value = true;
-  positionTooltip();
-}
-
-// The tooltip's position is computed once, on open — it doesn't track the
-// anchor continuously. Scrolling the shop list (or the page) while it's open
-// would leave it visually detached from the card it describes, so close it
-// instead of letting it go stale. A capture-phase listener catches scrolling
-// on the shop panel's own `overflow-y: auto` list, which doesn't bubble to
-// window as a normal listener would need.
-function closeTooltip() {
-  hovered.value = false;
-  focused.value = false;
-}
-window.addEventListener("scroll", closeTooltip, true);
-window.addEventListener("resize", closeTooltip);
-onUnmounted(() => {
-  window.removeEventListener("scroll", closeTooltip, true);
-  window.removeEventListener("resize", closeTooltip);
-});
+// extra affordance needed. See useAnchoredTooltip for the positioning logic
+// (shared with UpgradeTile.vue).
+const {
+  anchorRef: infoBtnRef,
+  visible: tooltipVisible,
+  tooltipId,
+  style: tooltipStyle,
+  onEnter: onInfoEnter,
+  onLeave: onInfoLeave,
+  onFocus: onInfoFocus,
+  onBlur: onInfoBlur
+} = useAnchoredTooltip();
 </script>
 
 <template>
@@ -124,9 +82,9 @@ onUnmounted(() => {
             :aria-label="t('units.moreInfo')"
             :aria-describedby="tooltipVisible ? tooltipId : undefined"
             @mouseenter="onInfoEnter"
-            @mouseleave="hovered = false"
+            @mouseleave="onInfoLeave"
             @focus="onInfoFocus"
-            @blur="focused = false"
+            @blur="onInfoBlur"
           >
             <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
               <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4" />
@@ -158,33 +116,26 @@ onUnmounted(() => {
     </div>
   </Transition>
 
-  <Teleport to="body">
-    <Transition name="tip">
-      <div
-        v-if="tooltipVisible"
-        :id="tooltipId"
-        class="tooltip"
-        role="tooltip"
-        :style="tooltipStyle ?? undefined"
-      >
-        <div class="tip-name">{{ t(nameKey) }}</div>
-        <div class="tip-desc">{{ t(descKey) }}</div>
-        <div class="tip-divider"></div>
-        <div class="tip-row">
-          <span>{{ t("units.tooltipCost") }}</span>
-          <span class="tip-val">{{ formatNumber(cost) }}</span>
-        </div>
-        <div v-if="effectiveAmount > 0" class="tip-row">
-          <span>{{ t("units.tooltipGain") }}</span>
-          <span class="tip-val accent">+{{ formatRate(gainPerS) }}/s</span>
-        </div>
-        <div class="tip-row">
-          <span>{{ t("units.tooltipEach") }}</span>
-          <span class="tip-val">{{ formatRate(def?.baseProduction ?? 0) }}/s</span>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <TooltipCard
+    :tooltip-id="tooltipId"
+    :visible="tooltipVisible"
+    :position-style="tooltipStyle"
+    :title="t(nameKey)"
+    :description="t(descKey)"
+  >
+    <div class="tip-row">
+      <span>{{ t("units.tooltipCost") }}</span>
+      <span class="tip-val">{{ formatNumber(cost) }}</span>
+    </div>
+    <div v-if="effectiveAmount > 0" class="tip-row">
+      <span>{{ t("units.tooltipGain") }}</span>
+      <span class="tip-val accent">+{{ formatRate(gainPerS) }}/s</span>
+    </div>
+    <div class="tip-row">
+      <span>{{ t("units.tooltipEach") }}</span>
+      <span class="tip-val">{{ formatRate(def?.baseProduction ?? 0) }}/s</span>
+    </div>
+  </TooltipCard>
 </template>
 
 <style scoped>
@@ -355,44 +306,9 @@ onUnmounted(() => {
   }
 }
 
-/* tooltip — position:fixed, top/left set inline from the info button's own
-   getBoundingClientRect() (see positionTooltip() above), clamped to the
-   viewport. Teleported to <body> so it isn't clipped by the shop panel's
-   `overflow-y: auto`, nor (at mobile widths) repositioned by the mobile
-   sheet's own `transform`, which would otherwise become this element's
-   containing block instead of the viewport. */
-.tooltip {
-  position: fixed;
-  width: 220px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-  z-index: 600;
-  pointer-events: none;
-}
-
-.tip-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent-text);
-  margin-bottom: 4px;
-}
-
-.tip-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-
-.tip-divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin-bottom: 8px;
-}
-
+/* tip-row/tip-val: the tooltip shell (.tooltip/.tip-name/.tip-desc/
+   .tip-divider/transitions) lives in the shared TooltipCard.vue now — this
+   is only the content this component supplies via its default slot. */
 .tip-row {
   display: flex;
   justify-content: space-between;
@@ -410,19 +326,6 @@ onUnmounted(() => {
 
 .tip-val.accent {
   color: var(--accent-text);
-}
-
-/* transitions */
-.tip-enter-active,
-.tip-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
-}
-.tip-enter-from,
-.tip-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
 }
 
 .unit-appear-enter-active {

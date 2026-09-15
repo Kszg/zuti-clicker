@@ -31,21 +31,28 @@ model Authentication {
 }
 
 model GameSave {
-  id                Int        @id @default(autoincrement())
-  userId            Int        @unique
-  user              User       @relation(fields: [userId], references: [id])
-  tokens            Float      @default(0)
-  totalTokensEarned Float      @default(0)
-  totalClicks       Int        @default(0)
-  elapsedSeconds    Float      @default(0)
-  phdCount          Int        @default(0)
-  prestigeCount     Int        @default(0)
-  runTokensEarned   Float      @default(0)
-  runClicks         Int        @default(0)
-  runSeconds        Float      @default(0)
-  savedAt           DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id                Int             @id @default(autoincrement())
+  userId            Int             @unique
+  user              User            @relation(fields: [userId], references: [id])
+  tokens            Float           @default(0)
+  totalTokensEarned Float           @default(0)
+  totalClicks       Int             @default(0)
+  elapsedSeconds    Float           @default(0)
+  phdCount          Int             @default(0)
+  prestigeCount     Int             @default(0)
+  runTokensEarned   Float           @default(0)
+  runClicks         Int             @default(0)
+  runSeconds        Float           @default(0)
+  // Booster anti-cheat state (see ActiveBooster below): the earliest instant
+  // at which the next POST /boosters/claim may succeed. Defaulting to "now"
+  // makes every pre-existing row immediately claimable, which is correct.
+  boostersCollected Int             @default(0)
+  nextBoosterAt     DateTime        @default(now())
+  savedAt           DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
   units             UnitSave[]
+  upgrades          UpgradeSave[]
+  activeBoosters    ActiveBooster[]
 
   // Support ORDER BY ... DESC LIMIT queries for each leaderboard metric.
   @@index([totalTokensEarned])
@@ -62,6 +69,33 @@ model UnitSave {
   owned      Int      @default(0)
 
   @@unique([gameSaveId, unitId])
+}
+
+// One-time click-power purchases (flat/multiplier/synergy/crit/booster
+// families — see frontend/src/utils/gameConstants.ts). Unlike UnitSave,
+// there is no `owned` count: presence of a row means the upgrade is bought.
+// Reset (deleted wholesale) on prestige, same as UnitSave.
+model UpgradeSave {
+  id         Int      @id @default(autoincrement())
+  gameSaveId Int
+  gameSave   GameSave @relation(fields: [gameSaveId], references: [id], onDelete: Cascade)
+  upgradeId  String   @db.VarChar(32)
+
+  @@unique([gameSaveId, upgradeId])
+}
+
+// Server-issued, server-timed booster buffs (see POST /boosters/claim). Never
+// written by PUT /save — the client cannot assert or extend a buff, only the
+// claim endpoint (rate-limited by GameSave.nextBoosterAt) can create one.
+// A second claim of an already-active type refreshes expiresAt in place.
+model ActiveBooster {
+  id         Int      @id @default(autoincrement())
+  gameSaveId Int
+  gameSave   GameSave @relation(fields: [gameSaveId], references: [id], onDelete: Cascade)
+  boosterId  String   @db.VarChar(32)
+  expiresAt  DateTime
+
+  @@unique([gameSaveId, boosterId])
 }
 
 model UserSettings {

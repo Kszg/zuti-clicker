@@ -74,6 +74,19 @@ export const buildSwaggerSpec = (): object => {
               owned: { type: "integer", minimum: 0, example: 5 }
             }
           },
+          ActiveBooster: {
+            type: "object",
+            description: "A live buff. Read-only — never accepted by PUT /save.",
+            properties: {
+              boosterId: { type: "string", example: "frenzy" },
+              remainingMs: {
+                type: "integer",
+                minimum: 0,
+                description: "Time left, in milliseconds, computed server-side at request time",
+                example: 45000
+              }
+            }
+          },
           StoreSaveRequest: {
             type: "object",
             // Only the original five are required — the prestige fields are
@@ -139,6 +152,13 @@ export const buildSwaggerSpec = (): object => {
               units: {
                 type: "array",
                 items: { $ref: "#/components/schemas/UnitSave" }
+              },
+              upgrades: {
+                type: "array",
+                description:
+                  "Owned upgrade ids (omit to keep the stored value; each entry must be a known id)",
+                items: { type: "string" },
+                example: ["chalk", "firmHandshake"]
               }
             }
           },
@@ -158,6 +178,15 @@ export const buildSwaggerSpec = (): object => {
               units: {
                 type: "array",
                 items: { $ref: "#/components/schemas/UnitSave" }
+              },
+              upgrades: {
+                type: "array",
+                items: { type: "string" },
+                example: ["chalk", "firmHandshake"]
+              },
+              activeBoosters: {
+                type: "array",
+                items: { $ref: "#/components/schemas/ActiveBooster" }
               }
             }
           },
@@ -263,6 +292,45 @@ export const buildSwaggerSpec = (): object => {
                 description: "null when the requesting user has no save yet"
               }
             }
+          },
+          ClaimBoosterResponse: {
+            allOf: [
+              { $ref: "#/components/schemas/MessageResponse" },
+              {
+                type: "object",
+                properties: {
+                  boosterId: { type: "string", example: "frenzy" },
+                  remainingMs: {
+                    type: "integer",
+                    minimum: 0,
+                    description: "Duration of the newly granted buff, in milliseconds",
+                    example: 60000
+                  },
+                  nextAvailableInMs: {
+                    type: "integer",
+                    minimum: 0,
+                    description: "Time until the next claim could succeed, in milliseconds",
+                    example: 142000
+                  }
+                }
+              }
+            ]
+          },
+          BoosterCooldownResponse: {
+            allOf: [
+              { $ref: "#/components/schemas/ErrorResponse" },
+              {
+                type: "object",
+                properties: {
+                  nextAvailableInMs: {
+                    type: "integer",
+                    minimum: 0,
+                    description: "Time until the next claim could succeed, in milliseconds",
+                    example: 37000
+                  }
+                }
+              }
+            ]
           }
         },
         responses: {

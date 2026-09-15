@@ -3,7 +3,11 @@ import type { LeaderboardMetric } from "@/types";
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
-    message: string
+    message: string,
+    // Full parsed response body, so a caller can read a field the generic
+    // {error} shape doesn't cover — e.g. boosters.claim()'s 409 response
+    // carries nextAvailableInMs alongside the error message.
+    public readonly body: unknown = undefined
   ) {
     super(message);
     this.name = "ApiError";
@@ -27,7 +31,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   const data = (await res.json()) as { error?: string } & T;
   if (!res.ok) {
-    throw new ApiError(res.status, data.error ?? `HTTP ${res.status}`);
+    throw new ApiError(res.status, data.error ?? `HTTP ${res.status}`, data);
   }
   return data;
 }
@@ -65,10 +69,25 @@ export interface SavePayload {
   phdCount?: number;
   prestigeCount?: number;
   units: UnitEntry[];
+  // Optional on the wire for the same reason (predates the upgrades system);
+  // every entry must be a known upgrade id or the whole request 400s.
+  upgrades?: string[];
+}
+
+export interface ActiveBoosterEntry {
+  boosterId: string;
+  // Server-computed remaining time, never an absolute expiry — see
+  // gameStore's LoadedGameSave for why.
+  remainingMs: number;
 }
 
 export interface SaveData extends SavePayload {
   savedAt: string;
+  // Read-only: never accepted by PUT /save. Optional in the type for the
+  // same reason units/phdCount etc. are on SavePayload — defensive against
+  // any response shape that predates this field; gameStore's loadFromSave
+  // treats an absent list the same as an empty one.
+  activeBoosters?: ActiveBoosterEntry[];
 }
 export interface LoadSaveResponse {
   save: SaveData | null;
@@ -79,6 +98,15 @@ export interface StoreSaveResponse {
 }
 export interface ResetSaveResponse {
   message: string;
+}
+
+export interface ClaimBoosterResponse {
+  message: string;
+  boosterId: string;
+  remainingMs: number;
+  // How long until the next claim could succeed — used to precisely
+  // re-seed the client's local spawn schedule (see composables/useBoosters.ts).
+  nextAvailableInMs: number;
 }
 
 export interface SettingsPayload {
@@ -146,5 +174,12 @@ export const api = {
       if (limit !== undefined) params.set("limit", String(limit));
       return request<LeaderboardResponse>("GET", `/leaderboard?${params.toString()}`);
     }
+  },
+  boosters: {
+    // No request body: the server alone picks the booster and its timing —
+    // see the anti-cheat model in the plan this implements. A 409 (cooldown
+    // not yet elapsed) still carries nextAvailableInMs on the thrown
+    // ApiError's `body`.
+    claim: () => request<ClaimBoosterResponse>("POST", "/boosters/claim")
   }
 };

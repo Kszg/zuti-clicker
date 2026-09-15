@@ -2,11 +2,15 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
+import { useUiStore } from "@/stores/uiStore";
 import MultiplierSelector from "./MultiplierSelector.vue";
 import UnitCard from "./UnitCard.vue";
+import ShopTabs from "./ShopTabs.vue";
+import UpgradesPanel from "./UpgradesPanel.vue";
 import type { Multiplier } from "@/types";
 
 const { t } = useI18n();
+const ui = useUiStore();
 const multiplier = ref<Multiplier>(1);
 </script>
 
@@ -16,15 +20,23 @@ const multiplier = ref<Multiplier>(1);
       <span class="panel-title">{{ t("units.title") }}</span>
     </div>
 
-    <MultiplierSelector v-model="multiplier" />
+    <ShopTabs />
 
-    <div class="units-list">
+    <!-- The multiplier only applies to bulk unit purchases — upgrades are
+         always a single one-time buy, so it's hidden on that tab rather
+         than shown-but-inert. -->
+    <MultiplierSelector v-if="ui.shopTab === 'units'" v-model="multiplier" />
+
+    <div v-if="ui.shopTab === 'units'" class="units-list">
       <UnitCard
         v-for="unit in UNIT_DEFINITIONS"
         :key="unit.id"
         :unit-id="unit.id"
         :multiplier="multiplier"
       />
+    </div>
+    <div v-else class="units-list">
+      <UpgradesPanel />
     </div>
   </aside>
 </template>

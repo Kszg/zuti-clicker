@@ -16,7 +16,8 @@ export default {
   },
   clicker: {
     hint: "Click to earn tokens!",
-    ariaLabel: "Click Dr. Zuti Pál's portrait to earn tokens"
+    ariaLabel: "Click Dr. Zuti Pál's portrait to earn tokens",
+    cps: "clicks/s"
   },
   nav: {
     title: "Panels",
@@ -51,6 +52,69 @@ export default {
       zeta: "Quantum token accelerator.",
       eta: "Cosmic token synthesizer.",
       theta: "Dimensional token extractor."
+    }
+  },
+  upgrades: {
+    title: "Upgrades",
+    ownedCount: "{owned} / {total} owned",
+    ownedTitle: "Owned",
+    emptyHint: "Keep earning tokens — your first upgrade will appear here soon.",
+    tooltipCost: "Cost",
+    tooltipEffect: "Effect",
+    familyFlat: "Click Power",
+    familyMultiplier: "Multipliers",
+    familySynergy: "Synergy",
+    familyCrit: "Critical Hits",
+    familyBooster: "Booster Perks",
+    names: {
+      chalk: "Chalk",
+      redPen: "Red Pen",
+      laserPointer: "Laser Pointer",
+      overheadProjector: "Overhead Projector",
+      firmHandshake: "Firm Handshake",
+      morningCoffee: "Morning Coffee",
+      officeHours: "Office Hours",
+      tenure: "Tenure",
+      honoraryDegree: "Honorary Degree",
+      lectureNotes: "Lecture Notes",
+      seminarRoom: "Seminar Room",
+      researchGrant: "Research Grant",
+      facultyBoard: "Faculty Board",
+      luckyGuess: "Lucky Guess",
+      openBookExam: "Open-Book Exam",
+      peerReview: "Peer Review",
+      conferenceBadge: "Conference Badge",
+      departmentNewsletter: "Department Newsletter"
+    },
+    descriptions: {
+      chalk: "A trusty stick of chalk sharpens every point you make.",
+      redPen: "Marks every click with a little more emphasis.",
+      laserPointer: "Draws the class's — and the counter's — attention.",
+      overheadProjector: "Projects your clicking onto a much bigger screen.",
+      firmHandshake: "A confident greeting doubles the impression you make.",
+      morningCoffee: "Sharpens focus before the first lecture.",
+      officeHours: "Extra time dedicated to getting things done right.",
+      tenure: "A permanent position, permanently better clicks.",
+      honoraryDegree: "An honor that speaks for itself.",
+      lectureNotes: "Well-organized notes turn passive income into active insight.",
+      seminarRoom: "Small-group discussion sharpens every click.",
+      researchGrant: "Funding that turns production into inspiration.",
+      facultyBoard: "A seat at the table where the big decisions get made.",
+      luckyGuess: "Sometimes you just know the answer.",
+      openBookExam: "Having the material at hand raises the odds of a perfect answer.",
+      peerReview: "Rigorous scrutiny occasionally turns up something brilliant.",
+      conferenceBadge: "Once you're checked in, the good stuff lasts longer.",
+      departmentNewsletter: "Word travels faster when everyone's on the mailing list."
+    }
+  },
+  boosters: {
+    pickupAriaLabel: "Claim a mystery booster",
+    claimedToast: "{name} activated!",
+    claimFailed: "Couldn't claim the booster — try again later.",
+    names: {
+      frenzy: "Grading Frenzy",
+      clickStorm: "Pop Quiz",
+      clearance: "Equipment Clearance"
     }
   },
   settings: {
