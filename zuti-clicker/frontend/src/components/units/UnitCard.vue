@@ -6,6 +6,7 @@ import { UNIT_DEFINITIONS } from "@/utils/gameConstants";
 import { getMaxBuyable } from "@/utils/costCalculator";
 import { formatNumber, formatRate } from "@/utils/formatters";
 import { useAnchoredTooltip } from "@/composables/useAnchoredTooltip";
+import TooltipCard from "@/components/shared/TooltipCard.vue";
 import type { Multiplier } from "@/types";
 
 const props = defineProps<{ unitId: string; multiplier: Multiplier }>();
@@ -115,33 +116,26 @@ const {
     </div>
   </Transition>
 
-  <Teleport to="body">
-    <Transition name="tip">
-      <div
-        v-if="tooltipVisible"
-        :id="tooltipId"
-        class="tooltip"
-        role="tooltip"
-        :style="tooltipStyle ?? undefined"
-      >
-        <div class="tip-name">{{ t(nameKey) }}</div>
-        <div class="tip-desc">{{ t(descKey) }}</div>
-        <div class="tip-divider"></div>
-        <div class="tip-row">
-          <span>{{ t("units.tooltipCost") }}</span>
-          <span class="tip-val">{{ formatNumber(cost) }}</span>
-        </div>
-        <div v-if="effectiveAmount > 0" class="tip-row">
-          <span>{{ t("units.tooltipGain") }}</span>
-          <span class="tip-val accent">+{{ formatRate(gainPerS) }}/s</span>
-        </div>
-        <div class="tip-row">
-          <span>{{ t("units.tooltipEach") }}</span>
-          <span class="tip-val">{{ formatRate(def?.baseProduction ?? 0) }}/s</span>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <TooltipCard
+    :tooltip-id="tooltipId"
+    :visible="tooltipVisible"
+    :position-style="tooltipStyle"
+    :title="t(nameKey)"
+    :description="t(descKey)"
+  >
+    <div class="tip-row">
+      <span>{{ t("units.tooltipCost") }}</span>
+      <span class="tip-val">{{ formatNumber(cost) }}</span>
+    </div>
+    <div v-if="effectiveAmount > 0" class="tip-row">
+      <span>{{ t("units.tooltipGain") }}</span>
+      <span class="tip-val accent">+{{ formatRate(gainPerS) }}/s</span>
+    </div>
+    <div class="tip-row">
+      <span>{{ t("units.tooltipEach") }}</span>
+      <span class="tip-val">{{ formatRate(def?.baseProduction ?? 0) }}/s</span>
+    </div>
+  </TooltipCard>
 </template>
 
 <style scoped>
@@ -312,44 +306,9 @@ const {
   }
 }
 
-/* tooltip — position:fixed, top/left set inline from the info button's own
-   getBoundingClientRect() (see positionTooltip() above), clamped to the
-   viewport. Teleported to <body> so it isn't clipped by the shop panel's
-   `overflow-y: auto`, nor (at mobile widths) repositioned by the mobile
-   sheet's own `transform`, which would otherwise become this element's
-   containing block instead of the viewport. */
-.tooltip {
-  position: fixed;
-  width: 220px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-  z-index: 600;
-  pointer-events: none;
-}
-
-.tip-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent-text);
-  margin-bottom: 4px;
-}
-
-.tip-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-
-.tip-divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin-bottom: 8px;
-}
-
+/* tip-row/tip-val: the tooltip shell (.tooltip/.tip-name/.tip-desc/
+   .tip-divider/transitions) lives in the shared TooltipCard.vue now — this
+   is only the content this component supplies via its default slot. */
 .tip-row {
   display: flex;
   justify-content: space-between;
@@ -367,19 +326,6 @@ const {
 
 .tip-val.accent {
   color: var(--accent-text);
-}
-
-/* transitions */
-.tip-enter-active,
-.tip-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
-}
-.tip-enter-from,
-.tip-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
 }
 
 .unit-appear-enter-active {

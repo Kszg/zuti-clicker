@@ -5,6 +5,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { UPGRADE_DEFINITIONS } from "@/utils/gameConstants";
 import { formatNumber, formatPercent } from "@/utils/formatters";
 import { useAnchoredTooltip } from "@/composables/useAnchoredTooltip";
+import TooltipCard from "@/components/shared/TooltipCard.vue";
 
 const props = defineProps<{ upgradeId: string }>();
 
@@ -81,29 +82,23 @@ function buy() {
     <span class="tile-cost">{{ formatNumber(def.cost) }}</span>
   </button>
 
-  <Teleport to="body">
-    <Transition name="tip">
-      <div
-        v-if="tooltipVisible"
-        :id="tooltipId"
-        class="tooltip"
-        role="tooltip"
-        :style="tooltipStyle ?? undefined"
-      >
-        <div class="tip-name">{{ t(nameKey) }}</div>
-        <div class="tip-desc">{{ t(descKey) }}</div>
-        <div class="tip-divider"></div>
-        <div class="tip-row">
-          <span>{{ t("upgrades.tooltipCost") }}</span>
-          <span class="tip-val">{{ formatNumber(def.cost) }}</span>
-        </div>
-        <div class="tip-row">
-          <span>{{ t("upgrades.tooltipEffect") }}</span>
-          <span class="tip-val accent">{{ effectLabel }}</span>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <TooltipCard
+    :tooltip-id="tooltipId"
+    :visible="tooltipVisible"
+    :position-style="tooltipStyle"
+    :width="200"
+    :title="t(nameKey)"
+    :description="t(descKey)"
+  >
+    <div class="tip-row">
+      <span>{{ t("upgrades.tooltipCost") }}</span>
+      <span class="tip-val">{{ formatNumber(def.cost) }}</span>
+    </div>
+    <div class="tip-row">
+      <span>{{ t("upgrades.tooltipEffect") }}</span>
+      <span class="tip-val accent">{{ effectLabel }}</span>
+    </div>
+  </TooltipCard>
 </template>
 
 <style scoped>
@@ -170,42 +165,9 @@ function buy() {
   color: var(--btn-dis-text);
 }
 
-/* tooltip — same positioning/teleport approach as UnitCard's (see
-   useAnchoredTooltip), duplicated styling only (no shared CSS module exists
-   in this codebase — see MultiplierSelector's own note on the segmented
-   control pattern being duplicated rather than extracted). */
-.tooltip {
-  position: fixed;
-  width: 200px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-  z-index: 600;
-  pointer-events: none;
-}
-
-.tip-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent-text);
-  margin-bottom: 4px;
-}
-
-.tip-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-
-.tip-divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin-bottom: 8px;
-}
-
+/* tip-row/tip-val: the tooltip shell (.tooltip/.tip-name/.tip-desc/
+   .tip-divider/transitions) lives in the shared TooltipCard.vue now — this
+   is only the content this component supplies via its default slot. */
 .tip-row {
   display: flex;
   justify-content: space-between;
@@ -223,17 +185,5 @@ function buy() {
 
 .tip-val.accent {
   color: var(--accent-text);
-}
-
-.tip-enter-active,
-.tip-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
-}
-.tip-enter-from,
-.tip-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
 }
 </style>

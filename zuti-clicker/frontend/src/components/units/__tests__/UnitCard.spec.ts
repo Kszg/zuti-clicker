@@ -47,13 +47,29 @@ describe("UnitCard", () => {
   });
 
   describe("tooltip", () => {
+    // Extracting the tooltip shell into a shared TooltipCard.vue (nested one
+    // component level deeper than before) made an existing test-hygiene gap
+    // visible: a test that leaves the tooltip open doesn't unmount its
+    // wrapper before the outer afterEach wipes document.body.innerHTML raw,
+    // which can leave Vue's Teleport target bookkeeping referencing a node
+    // that's already gone by the time the *next* test mounts and teleports
+    // into <body> again. Explicitly unmounting here — before the raw DOM
+    // wipe — is the correct fix (proper component teardown first, blunt DOM
+    // cleanup only as a hygiene net after), not a workaround.
+    let wrapper: ReturnType<typeof mount> | undefined;
+
+    afterEach(() => {
+      wrapper?.unmount();
+      wrapper = undefined;
+    });
+
     it("is closed until hovered or the info button is focused", () => {
-      mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       expect(body().find(".tooltip").exists()).toBe(false);
     });
 
     it("opens on hovering the info button (pointer) and closes on mouseleave", async () => {
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".info-btn").trigger("mouseenter");
       expect(body().find(".tooltip").exists()).toBe(true);
 
@@ -66,13 +82,13 @@ describe("UnitCard", () => {
       // the whole row react to hover regardless made the icon look like
       // decoration, since the tooltip was already open by the time you
       // noticed it.
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".unit-card").trigger("mouseenter");
       expect(body().find(".tooltip").exists()).toBe(false);
     });
 
     it("regression: opens on focusing the info button, reaching it without a pointer", async () => {
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".info-btn").trigger("focus");
       expect(body().find(".tooltip").exists()).toBe(true);
 
@@ -81,14 +97,14 @@ describe("UnitCard", () => {
     });
 
     it("is teleported to <body>, escaping any ancestor's overflow/transform clipping", async () => {
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".info-btn").trigger("focus");
       expect(wrapper.find(".tooltip").exists()).toBe(false); // not inside the component's own tree
       expect(body().find(".tooltip").exists()).toBe(true);
     });
 
     it("shows the unit's name, description, cost, and gain", async () => {
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".info-btn").trigger("focus");
       const tip = body().find(".tooltip");
       expect(tip.text()).toContain("Alpha");
@@ -96,7 +112,7 @@ describe("UnitCard", () => {
     });
 
     it("closes on scroll rather than going stale at a scrolled-past position", async () => {
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".info-btn").trigger("focus");
       expect(body().find(".tooltip").exists()).toBe(true);
 
@@ -106,7 +122,7 @@ describe("UnitCard", () => {
     });
 
     it("closes on window resize", async () => {
-      const wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
+      wrapper = mount(UnitCard, { props: { unitId: "alpha", multiplier: 1 } });
       await wrapper.find(".info-btn").trigger("mouseenter");
       expect(body().find(".tooltip").exists()).toBe(true);
 

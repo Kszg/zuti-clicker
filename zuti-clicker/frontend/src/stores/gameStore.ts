@@ -27,7 +27,7 @@ import {
   getClickValue,
   rollCrit
 } from "@/utils/upgrades";
-import type { UnitState, Multiplier, ActiveBoosterState } from "@/types";
+import type { UnitState, Multiplier, ActiveBoosterState, BoosterKind } from "@/types";
 
 export interface GameSaveInput {
   tokens: number;
@@ -107,20 +107,17 @@ export const useGameStore = defineStore("game", () => {
   const boosterSpawnMultiplier = computed(() => getBoosterSpawnMultiplier(ownedUpgrades.value));
 
   // Live-buff multipliers, derived from activeBoosters (see grantBooster and
-  // the expiry sweep in tick()). Date.now() is read fresh every time this
-  // recomputes, which only happens when activeBoosters.value itself changes
-  // (a new grant, or a sweep removing an expired entry) — the multiplier
-  // value has no reason to change in between, so this is not a "read the
-  // clock every frame" anti-pattern.
-  const boosterProductionMultiplier = computed(() =>
-    getActiveBoosterMultiplier(activeBoosters.value, Date.now(), "production")
-  );
-  const boosterClickMultiplier = computed(() =>
-    getActiveBoosterMultiplier(activeBoosters.value, Date.now(), "click")
-  );
-  const boosterCostMultiplier = computed(() =>
-    getActiveBoosterMultiplier(activeBoosters.value, Date.now(), "costReduction")
-  );
+  // the expiry sweep in tick()). Date.now() is read fresh every time one of
+  // these recomputes, which only happens when activeBoosters.value itself
+  // changes (a new grant, or a sweep removing an expired entry) — the
+  // multiplier value has no reason to change in between, so this is not a
+  // "read the clock every frame" anti-pattern.
+  function boosterMultiplier(kind: BoosterKind) {
+    return computed(() => getActiveBoosterMultiplier(activeBoosters.value, Date.now(), kind));
+  }
+  const boosterProductionMultiplier = boosterMultiplier("production");
+  const boosterClickMultiplier = boosterMultiplier("click");
+  const boosterCostMultiplier = boosterMultiplier("costReduction");
   // What unit purchases actually pay: the permanent PhD discount stacked
   // with any transient booster discount (see costMultiplier's comment above
   // for why the two are kept separate).
