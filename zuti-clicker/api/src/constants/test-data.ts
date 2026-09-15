@@ -130,6 +130,53 @@ export class TestData {
     units: []
   };
 
+  // Full save shape including two known upgrade ids.
+  static readonly SAVE_WITH_UPGRADES = {
+    tokens: 100,
+    totalTokensEarned: 5000,
+    totalClicks: 20,
+    elapsedSeconds: 300,
+    units: [],
+    upgrades: ["chalk", "firmHandshake"]
+  };
+
+  static readonly SAVE_UPDATED_UPGRADES = {
+    tokens: 50,
+    totalTokensEarned: 6000,
+    totalClicks: 25,
+    elapsedSeconds: 400,
+    units: [],
+    upgrades: ["chalk"]
+  };
+
+  // Legacy-client shape (no `upgrades` key at all) — omitted must preserve
+  // whatever is already stored, never wipe it.
+  static readonly SAVE_NO_UPGRADES_KEY = {
+    tokens: 75,
+    totalTokensEarned: 7000,
+    totalClicks: 30,
+    elapsedSeconds: 500,
+    units: []
+  };
+
+  static readonly SAVE_INVALID_UPGRADES_UNKNOWN_ID = {
+    tokens: 1,
+    totalTokensEarned: 1,
+    totalClicks: 1,
+    elapsedSeconds: 1,
+    units: [],
+    upgrades: ["not-a-real-upgrade"]
+  };
+
+  static readonly SAVE_INVALID_UPGRADES_NOT_ARRAY = {
+    tokens: 1,
+    totalTokensEarned: 1,
+    totalClicks: 1,
+    elapsedSeconds: 1,
+    units: [],
+    upgrades: "chalk"
+  };
+
   static readonly VALID_SETTINGS = {
     theme: "light",
     language: "hu",

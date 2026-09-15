@@ -20,12 +20,28 @@ export interface SaveInput {
   runClicks?: number;
   runSeconds?: number;
   units: UnitInput[];
+  // Optional for the same reason (predates the upgrades system). Unlike
+  // `units` (always sent, always replaced wholesale), an absent `upgrades`
+  // here means "leave whatever is already stored alone" — same
+  // omitted-means-preserve rule as the prestige fields above.
+  upgrades?: string[];
 }
 
+// A player's active booster buffs are deliberately NOT part of SaveInput —
+// they can only be created/refreshed by POST /boosters/claim (see
+// database/models/boosters.ts). PUT /save can neither set nor clear them.
 export const getSave = async (userId: number) => {
+  const now = new Date();
   return prisma.gameSave.findUnique({
     where: { userId },
-    include: { units: true }
+    include: {
+      units: true,
+      upgrades: true,
+      // Only ever return live buffs — an expired row is prestige-free debris
+      // waiting for the next claim to overwrite it, not something a client
+      // needs to know about.
+      activeBoosters: { where: { expiresAt: { gt: now } } }
+    }
   });
 };
 
@@ -84,12 +100,24 @@ export const upsertSave = async (userId: number, data: SaveInput) => {
       });
     }
 
+    // Upgrades follow the units replace-wholesale pattern, but ONLY when
+    // present — an absent `upgrades` (a legacy client) must leave whatever
+    // is already stored untouched, never wipe a player's purchases.
+    if (data.upgrades !== undefined) {
+      await tx.upgradeSave.deleteMany({ where: { gameSaveId: gameSave.id } });
+      if (data.upgrades.length > 0) {
+        await tx.upgradeSave.createMany({
+          data: data.upgrades.map((upgradeId) => ({ gameSaveId: gameSave.id, upgradeId }))
+        });
+      }
+    }
+
     return gameSave;
   });
 };
 
 export const deleteSave = async (userId: number) => {
   // deleteMany is idempotent — no error if no save exists.
-  // Cascade in the DB removes associated UnitSave rows.
+  // Cascade in the DB removes associated UnitSave/UpgradeSave/ActiveBooster rows.
   return prisma.gameSave.deleteMany({ where: { userId } });
 };

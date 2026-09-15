@@ -1,0 +1,23 @@
+// Keep in sync with frontend/src/utils/gameConstants.ts's BOOSTER_DEFINITIONS.
+export const BOOSTER_IDS = ["frenzy", "clickStorm", "clearance"] as const;
+export type BoosterId = (typeof BOOSTER_IDS)[number];
+
+export const BOOSTER_WEIGHTS: Record<BoosterId, number> = {
+  frenzy: 4,
+  clickStorm: 4,
+  clearance: 3
+};
+
+export const BOOSTER_DURATION_SECS: Record<BoosterId, number> = {
+  frenzy: 60,
+  clickStorm: 90,
+  clearance: 120
+};
+
+// The window POST /boosters/claim draws GameSave.nextBoosterAt's next value
+// from, on every successful claim — this IS the "a booster can pop up
+// randomly in 1-5 minutes" spawn window from the player's perspective, not a
+// separate concept (see composables/useBoosters.ts on the frontend for how
+// the client's cosmetic spawn schedule stays in sync with this).
+export const BOOSTER_COOLDOWN_MIN_SECS = 60;
+export const BOOSTER_COOLDOWN_MAX_SECS = 300;

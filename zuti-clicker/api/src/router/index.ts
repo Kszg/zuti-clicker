@@ -4,6 +4,7 @@ import authentication from "./authentication";
 import save from "./save";
 import settings from "./settings";
 import leaderboard from "./leaderboard";
+import boosters from "./boosters";
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ export default (): express.Router => {
   save(router);
   settings(router);
   leaderboard(router);
+  boosters(router);
 
   return router;
 };
