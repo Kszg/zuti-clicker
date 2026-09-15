@@ -16,7 +16,8 @@ export default {
   },
   clicker: {
     hint: "Kattints a tokenekért!",
-    ariaLabel: "Kattints Dr. Zuti Pál portréjára tokenekért"
+    ariaLabel: "Kattints Dr. Zuti Pál portréjára tokenekért",
+    cps: "kattintás/mp"
   },
   nav: {
     title: "Panelek",
@@ -51,6 +52,68 @@ export default {
       zeta: "Kvantum token-gyorsító.",
       eta: "Kozmikus token-szintetizátor.",
       theta: "Dimenziós token-kinyerő."
+    }
+  },
+  upgrades: {
+    title: "Fejlesztések",
+    ownedCount: "{owned} / {total} megszerezve",
+    ownedTitle: "Megszerzett",
+    emptyHint: "Gyűjts tovább tokeneket — hamarosan megjelenik itt az első fejlesztésed.",
+    tooltipCost: "Ár",
+    tooltipEffect: "Hatás",
+    familyFlat: "Kattintási Erő",
+    familyMultiplier: "Szorzók",
+    familySynergy: "Szinergia",
+    familyCrit: "Kritikus Találatok",
+    familyBooster: "Booster Előnyök",
+    names: {
+      chalk: "Kréta",
+      redPen: "Piros Toll",
+      laserPointer: "Lézermutató",
+      overheadProjector: "Írásvetítő",
+      firmHandshake: "Határozott Kézfogás",
+      morningCoffee: "Reggeli Kávé",
+      officeHours: "Fogadóóra",
+      tenure: "Véglegesítés",
+      honoraryDegree: "Díszdoktori Cím",
+      lectureNotes: "Előadásjegyzet",
+      seminarRoom: "Szemináriumi Terem",
+      researchGrant: "Kutatási Ösztöndíj",
+      facultyBoard: "Kari Tanács",
+      luckyGuess: "Szerencsés Tipp",
+      openBookExam: "Nyílt Könyves Vizsga",
+      peerReview: "Szakmai Lektorálás",
+      conferenceBadge: "Konferencia Kitűző",
+      departmentNewsletter: "Tanszéki Hírlevél"
+    },
+    descriptions: {
+      chalk: "Egy megbízható darab kréta minden pontodat kiélezi.",
+      redPen: "Minden kattintást egy kicsit hangsúlyosabbá tesz.",
+      laserPointer: "Az osztály — és a számláló — figyelmét is felkelti.",
+      overheadProjector: "A kattintásaidat egy sokkal nagyobb vászonra vetíti.",
+      firmHandshake: "Egy magabiztos üdvözlés megduplázza a benyomást, amit keltesz.",
+      morningCoffee: "Kiélesíti a fókuszt az első óra előtt.",
+      officeHours: "Extra idő arra, hogy a dolgokat rendesen elvégezd.",
+      tenure: "Egy állandó pozíció, állandóan jobb kattintásokkal.",
+      honoraryDegree: "Egy elismerés, amely önmagáért beszél.",
+      lectureNotes: "A jól rendszerezett jegyzet a passzív bevételt aktív meglátássá alakítja.",
+      seminarRoom: "A kiscsoportos megbeszélés minden kattintást kiélez.",
+      researchGrant: "A finanszírozás a termelést inspirációvá alakítja.",
+      facultyBoard: "Egy hely az asztalnál, ahol a nagy döntések születnek.",
+      luckyGuess: "Néha egyszerűen csak tudod a választ.",
+      openBookExam: "Ha kéznél van az anyag, nagyobb az esélye a tökéletes válasznak.",
+      peerReview: "Az alapos átvizsgálás időnként valami zseniálisra bukkan.",
+      conferenceBadge: "Ha egyszer bejelentkeztél, a jó dolgok tovább tartanak.",
+      departmentNewsletter: "A hír gyorsabban terjed, ha mindenki rajta van a listán."
+    }
+  },
+  boosters: {
+    pickupAriaLabel: "Rejtélyes booster begyűjtése",
+    claimedToast: "{name} aktiválva!",
+    names: {
+      frenzy: "Értékelési Roham",
+      clickStorm: "Röpdolgozat",
+      clearance: "Eszközkiárusítás"
     }
   },
   settings: {
