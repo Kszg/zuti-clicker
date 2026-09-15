@@ -30,6 +30,8 @@ erDiagram
         Float   runTokensEarned      "Aktuális menetben szerzett token"
         Int     runClicks            "Aktuális menetbeli kattintások"
         Float   runSeconds           "Aktuális menet ideje (másodperc)"
+        Int     boostersCollected    "Összes begyűjtött booster száma (életút)"
+        DateTime nextBoosterAt       "Legkorábbi időpont, amikor a következő booster igényelhető"
         DateTime savedAt             "Utolsó mentés ideje"
         DateTime updatedAt           "Automatikus frissítés"
     }
@@ -39,6 +41,19 @@ erDiagram
         Int     gameSaveId  FK  "Kapcsolódó mentés"
         String  unitId          "Egység azonosítója (pl. alpha)"
         Int     owned           "Megvásárolt darabszám"
+    }
+
+    UpgradeSave {
+        Int     id          PK  "Egyedi azonosító (auto)"
+        Int     gameSaveId  FK  "Kapcsolódó mentés"
+        String  upgradeId       "Fejlesztés azonosítója (pl. chalk)"
+    }
+
+    ActiveBooster {
+        Int      id          PK  "Egyedi azonosító (auto)"
+        Int      gameSaveId  FK  "Kapcsolódó mentés"
+        String   boosterId       "Booster azonosítója (pl. frenzy)"
+        DateTime expiresAt       "Lejárat időpontja"
     }
 
     UserSettings {
@@ -53,10 +68,12 @@ erDiagram
         DateTime updatedAt               "Utolsó módosítás"
     }
 
-    User ||--o| Authentication : "rendelkezik"
-    User ||--o| GameSave       : "rendelkezik"
-    User ||--o| UserSettings   : "rendelkezik"
-    GameSave ||--o{ UnitSave   : "tartalmaz"
+    User ||--o| Authentication  : "rendelkezik"
+    User ||--o| GameSave        : "rendelkezik"
+    User ||--o| UserSettings    : "rendelkezik"
+    GameSave ||--o{ UnitSave    : "tartalmaz"
+    GameSave ||--o{ UpgradeSave : "tartalmaz"
+    GameSave ||--o{ ActiveBooster : "tartalmaz"
 ```
 
 ## Táblák leírása
@@ -74,8 +91,16 @@ A `totalTokensEarned`/`totalClicks`/`elapsedSeconds` mezők **életút-szintűek
 
 A `totalTokensEarned`, `totalClicks`, `phdCount` és `elapsedSeconds` mezőkön egy-egy index (`@@index`) is létezik — ezek szolgálják ki a `GET /leaderboard` rangsoroló (`ORDER BY ... DESC LIMIT`) lekérdezéseit.
 
+A `boostersCollected` és `nextBoosterAt` mezők a booster-rendszer (lásd `POST /boosters/claim` és a fejlesztői dokumentáció "Booster anti-cheat modell" szakasza) állapotát tárolják. A `nextBoosterAt` az egyetlen kapu, amely eldönti, mikor igényelhető a következő booster — ezt kizárólag a szerver módosítja, a `PUT /save` sosem írja. Egy meglévő mentésnél a mezőt bevezető migráció a jelenlegi időre állította be az alapértéket, így minden korábbi mentés azonnal jogosulttá vált az első booster igénylésére.
+
 ### `UnitSave`
 Az egyes egységtípusokhoz tartozó megvásárolt darabszámokat tárolja. Egy `GameSave`-hez több `UnitSave` sor is tartozhat (1:N kapcsolat). A `gameSaveId + unitId` páros egyedi kényszert kapott, hogy egy mentésen belül minden egységtípus legfeljebb egyszer szerepeljen. Ha a szülő `GameSave` törlésre kerül, az összes kapcsolódó `UnitSave` sor automatikusan törlődik (`ON DELETE CASCADE`).
+
+### `UpgradeSave`
+Az egyszeri megvásárlású kattintás-erő fejlesztéseket (upgrade-eket) tárolja — egy sor jelenléte jelenti, hogy a fejlesztés meg van véve, nincs külön darabszám-mező (ellentétben a `UnitSave`-vel). A `gameSaveId + upgradeId` páros egyedi kényszert kapott. Fokozatszerzéskor (prestige) a frontend `gameStore.prestige()` az összes ehhez a mentéshez tartozó sort törli (a következő `PUT /save` hívás rögzíti az üres listát), ugyanúgy, mint az egységeknél. Ha a szülő `GameSave` törlésre kerül, az összes kapcsolódó sor automatikusan törlődik (`ON DELETE CASCADE`).
+
+### `ActiveBooster`
+A jelenleg aktív, időzített booster-bónuszokat tárolja. **Kizárólag** a `POST /boosters/claim` végpont hozhatja létre vagy frissítheti (lásd a fejlesztői dokumentáció "Booster anti-cheat modell" szakaszát) — a `PUT /save` sosem ír ebbe a táblába. A `gameSaveId + boosterId` páros egyedi kényszert kapott: egy már aktív típus újra-igénylése a meglévő sor `expiresAt` mezőjét frissíti, nem hoz létre új sort. A `GET /save` csak a még nem lejárt (`expiresAt` a jelenlegi időnél későbbi) sorokat adja vissza, és `remainingMs` hátralévő időként, sosem abszolút időpontként — a kliens ezt a saját órájához rögzíti, hogy egy óraeltérés se hosszabbíthassa meg a bónuszt. Ha a szülő `GameSave` törlésre kerül, az összes kapcsolódó sor automatikusan törlődik (`ON DELETE CASCADE`).
 
 ### `UserSettings`
 Felhasználónként legfeljebb egy beállítás-rekord létezik (1:1 kapcsolat a `User` táblával), amely a kliens-oldali preferenciákat (téma, nyelv, automatikus mentés, fokozatszerzés-ünneplés módja) tárolja szerver oldalon, hogy azok eszközök között szinkronizálódjanak bejelentkezett felhasználóknál. Vendégjátékosoknál ezek a beállítások csak a böngésző `localStorage`-ában élnek. Ha még nem létezik rekord egy felhasználóhoz, a `GET /settings` az alapértelmezett értékeket adja vissza `updatedAt: null` mellett. Ha a szülő `User` törlésre kerül, a `UserSettings` sor is automatikusan törlődik (`ON DELETE CASCADE`) — eltérően az `Authentication`/`GameSave` táblák `RESTRICT` viselkedésétől, mivel a beállítások a tulajdonos nélkül értelmezhetetlenek.
@@ -90,4 +115,6 @@ A `hideFromLeaderboards` mező (alapértéke `false`) zárja ki a felhasználót
 | `User` | `GameSave` | 1 : 0..1 | Egy felhasználónak legfeljebb egy aktív mentése lehet |
 | `User` | `UserSettings` | 1 : 0..1 | Egy felhasználónak legfeljebb egy beállítás-rekordja lehet |
 | `GameSave` | `UnitSave` | 1 : 0..N | Egy mentés tetszőleges számú egységrekordot tartalmazhat |
+| `GameSave` | `UpgradeSave` | 1 : 0..N | Egy mentés tetszőleges számú megszerzett fejlesztést tartalmazhat |
+| `GameSave` | `ActiveBooster` | 1 : 0..N | Egy mentéshez egyszerre több, különböző típusú aktív booster is tartozhat |
 ```

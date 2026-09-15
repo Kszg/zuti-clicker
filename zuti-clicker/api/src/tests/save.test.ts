@@ -250,3 +250,134 @@ describe("Save endpoints - prestige validation", () => {
     expect(res.body.error).toBe(Responses.SAVE.INVALID_UNITS.body.error);
   });
 });
+
+describe("Save endpoints - upgrades", () => {
+  let cookie: string;
+
+  beforeAll(async () => {
+    const user = TestData.generateUser();
+    await api.post("/auth/register").send(user);
+    const loginRes = await api
+      .post("/auth/login")
+      .send({ email: user.email, password: user.password });
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
+    cookie = rawHeader.split(";")[0];
+  });
+
+  it("PUT /save persists owned upgrade ids", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.SAVE_WITH_UPGRADES);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe(Responses.SAVE.SAVE_SUCCESS.body.message);
+  });
+
+  it("GET /save round-trips the upgrade list", async () => {
+    const res = await api.get("/save").set("Cookie", cookie);
+    expect(res.status).toBe(200);
+    expect(res.body.save.upgrades.sort()).toEqual(
+      [...TestData.SAVE_WITH_UPGRADES.upgrades].sort()
+    );
+  });
+
+  it("PUT /save replaces the upgrade list wholesale when present", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_UPDATED_UPGRADES);
+    expect(res.status).toBe(200);
+
+    const getRes = await api.get("/save").set("Cookie", cookie);
+    expect(getRes.body.save.upgrades).toEqual(TestData.SAVE_UPDATED_UPGRADES.upgrades);
+  });
+
+  it("PUT /save with no upgrades key preserves the stored upgrade list — omission is not deletion", async () => {
+    const res = await api.put("/save").set("Cookie", cookie).send(TestData.SAVE_NO_UPGRADES_KEY);
+    expect(res.status).toBe(200);
+
+    const getRes = await api.get("/save").set("Cookie", cookie);
+    expect(getRes.body.save.tokens).toBe(TestData.SAVE_NO_UPGRADES_KEY.tokens);
+    // The upgrades from the immediately preceding write must survive unchanged.
+    expect(getRes.body.save.upgrades).toEqual(TestData.SAVE_UPDATED_UPGRADES.upgrades);
+  });
+
+  it("GET /save returns an empty upgrades array (not an error) for a save with none", async () => {
+    const user = TestData.generateUser();
+    await api.post("/auth/register").send(user);
+    const loginRes = await api
+      .post("/auth/login")
+      .send({ email: user.email, password: user.password });
+    const freshCookie = (loginRes.headers["set-cookie"] as unknown as string[])[0].split(";")[0];
+
+    await api.put("/save").set("Cookie", freshCookie).send(TestData.SAVE_NO_UPGRADES_KEY);
+    const res = await api.get("/save").set("Cookie", freshCookie);
+    expect(res.body.save.upgrades).toEqual([]);
+    expect(res.body.save.activeBoosters).toEqual([]);
+  });
+});
+
+describe("Save endpoints - upgrades validation", () => {
+  let cookie: string;
+
+  beforeAll(async () => {
+    const user = TestData.generateUser();
+    await api.post("/auth/register").send(user);
+    const loginRes = await api
+      .post("/auth/login")
+      .send({ email: user.email, password: user.password });
+    const rawHeader = (loginRes.headers["set-cookie"] as unknown as string[])[0];
+    cookie = rawHeader.split(";")[0];
+  });
+
+  it("rejects an unknown upgrade id", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_INVALID_UPGRADES_UNKNOWN_ID);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_UPGRADES.body.error);
+  });
+
+  it("rejects a non-array upgrades value", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_INVALID_UPGRADES_NOT_ARRAY);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_UPGRADES.body.error);
+  });
+
+  it("regression: rejects a duplicate upgrade id with 400 rather than reaching Prisma and 500", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send(TestData.SAVE_INVALID_UPGRADES_DUPLICATE);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_UPGRADES.body.error);
+  });
+
+  it("regression: a missing-fields body with an otherwise-valid upgrades array still returns MISSING_FIELDS", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send({ ...TestData.SAVE_MISSING_FIELDS, upgrades: ["chalk"] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.MISSING_FIELDS.body.error);
+  });
+
+  it("regression: an invalid-prestige body with an otherwise-valid upgrades array still returns INVALID_PRESTIGE", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send({ ...TestData.SAVE_NEGATIVE_PHD, upgrades: ["chalk"] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_PRESTIGE.body.error);
+  });
+
+  it("an invalid upgrades array is still caught even with an otherwise fully valid body (incl. prestige fields)", async () => {
+    const res = await api
+      .put("/save")
+      .set("Cookie", cookie)
+      .send({ ...TestData.PRESTIGE_SAVE, upgrades: ["not-a-real-upgrade"] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(Responses.SAVE.INVALID_UPGRADES.body.error);
+  });
+});

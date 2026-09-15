@@ -90,7 +90,7 @@ A „Total Earned", „Total Clicks", „Time Played" és „PhDs Earned" statis
 
 A kép Dr. Zuti Pál portréját ábrázolja. Kattints rá a tokenek megszerzéséhez! Minden kattintásra:
 - A kör rövid animációt játszik le, gyors, egymást követő kattintásoknál is minden egyes alkalommal.
-- Egy lebegő „+1" (vagy nagyobb, ha szorzókat vásároltál) szám jelenik meg a kattintás helyén, majd felfele úszik és eltűnik.
+- Egy lebegő „+1" (vagy nagyobb, ha fejlesztéseket vásároltál) szám jelenik meg a kattintás helyén, majd felfele úszik és eltűnik. Egy **kritikus találat** (lásd lentebb, „Fejlesztések") nagyobb, feltűnőbb, arany színű számmal jelenik meg.
 - A token egyenleged azonnal növekszik.
 
 A bal és jobb egérgomb is számít kattintásnak — jobb gombbal kattintva nem
@@ -98,9 +98,42 @@ nyílik meg a böngésző saját menüje, a kattintás ugyanúgy tokent ér. A k
 billentyűzettel is elérhető (Tab), és Enter/Szóköz megnyomásával
 kattintható. A portré nem húzható ki a köréből.
 
+A kör alatti szám a **kattintás/másodperc** (CPS) tempódat mutatja — az
+utóbbi két másodperced kattintásaiból számolva, csak akkor jelenik meg, ha
+éppen kattintgatsz. (A másodpercenkénti token-termelésed — a „Per Second" —
+a bal oldali Státuszoszlopban látható folyamatosan, illetve telefonon a
+fejlécben, kompakt formában.)
+
+### Boosterek
+
+Időnként (átlagosan 1–5 percenként) egy pulzáló, arany színű ikon jelenik
+meg valahol a Kattintó területén — sosem közvetlenül a kör fölött. Ez egy
+**booster**: kattints rá, mielőtt eltűnik (kb. 10–20 másodpercig látható), és
+1–2 percre az egyik alábbi bónuszt kapod:
+
+- **Termelés-boost**: a másodpercenkénti termelésed sokszorosára nő.
+- **Kattintás-boost**: a kattintásaid sokszorosára nőnek.
+- **Kedvezmény**: az egységárak jelentősen csökkennek.
+
+A booster típusa csak a begyűjtés pillanatában derül ki — egy rövid
+értesítés (toast) jelzi, melyiket kaptad. Amíg egy booster aktív, egy
+számláló-buborék jelenik meg a Kattintó tetején, ami mutatja, mennyi idő van
+hátra. Ha lekésed a boostert, semmi nem veszik el — csak várnod kell a
+következőre.
+
+Bejelentkezve a boosterek a szerveren dőlnek el (a pontos időzítést és
+típust a szerver választja, hogy senki ne tudjon csalással gyakrabban vagy
+jobb boostereket szerezni), és túlélnek egy oldal-újratöltést is. Vendégként
+a boosterek csak a böngésződben, helyben futnak, és — a többi vendég-
+haladásoddal együtt — elvesznek, ha bezárod vagy frissíted a lapot.
+
 ---
 
 ## Egységek panel (jobb oldal)
+
+A panel tetején egy **„Units" / „Upgrades"** fül-váltó választja el a két
+alpanelt: az „Units" a lent leírt egység-boltot mutatja, az „Upgrades" pedig
+a fejlesztéseket (lásd „Fejlesztések" lentebb).
 
 ### Szorzóválasztó
 
@@ -129,6 +162,33 @@ Egy egység addig rejtett, amíg az összes szerzett tokened nem éri el az alap
 
 ---
 
+## Fejlesztések (Upgrades)
+
+Az „Upgrades" fülön (lásd fent) egy másik fajta vásárlás érhető el: a
+**fejlesztések** — ezek nem termelnek, hanem közvetlenül a **kattintásod
+erejét** növelik, és egyszer vehetők meg (nincs darabszám, mint az
+egységeknél). Öt csoportba tartoznak:
+
+- **Kattintási Erő**: fix mennyiséget ad hozzá minden kattintásodhoz.
+- **Szorzók**: megduplázzák a kattintásod értékét (egymással szorzódnak).
+- **Szinergia**: a másodpercenkénti termelésed egy kis százalékát is
+  hozzáadja minden kattintáshoz — minél nagyobb a gazdaságod, annál többet
+  ér egy kattintás.
+- **Kritikus Találatok**: esélyt adnak arra, hogy egy kattintás sokszorosát
+  érje a szokásosnak (lásd a Kattintó szekciót a feltűnő, arany számért).
+  Ha több szintet is megveszel ebből a csoportból, csak a legerősebb (legdrágább) számít, nem adódnak össze.
+- **Booster Előnyök**: a boosterek időtartamát hosszabbítják meg, illetve
+  gyakoribbá teszik a megjelenésüket.
+
+Egy fejlesztés ugyanúgy fokozatosan tárul fel, mint az egységek — minél
+többet szereztél összesen, annál több fejlesztés jelenik meg a boltban. A
+megvásárolt fejlesztések egy elkülönített, halványabb sávba kerülnek a lista
+alján. **Fontos**: a fejlesztések, akárcsak az egységek, elvesznek
+fokozatszerzéskor (lásd lent) — minden új menet a kattintás-erejét is
+nulláról építi fel újra.
+
+---
+
 ## Fokozat (Prestige)
 
 Amint összesen (élete során, nem csak az aktuális menetben) legalább 100 000 tokent szereztél, a bal oldali oszlop alján megjelenik a **„Fokozat"** panel — ugyanaz a fokozatos feltárási logika, mint az egységeknél: a panel egyszer megjelenve mindig látható marad, akkor is, ha egy új menetet éppen csak elkezdtél. A tényleges fokozatszerzéshez (a „Defend Thesis" gomb aktiválódásához) az **aktuális menetben** kell legalább 1 000 000 tokent szerezned:
@@ -138,7 +198,7 @@ Amint összesen (élete során, nem csak az aktuális menetben) legalább 100 00
 - **Progress to next PhD**: Egy folyamatjelző, ami mutatja, mennyire vagy közel a következő PhD-hoz.
 - **„Defend Thesis" (Disszertáció megvédése) gomb**: Aktívvá válik, amint legalább 1 PhD-t érsz el az aktuális menetben.
 
-A gombra kattintva egy megerősítő ablak jelenik meg, amely megmutatja, pontosan hány PhD-t kapnál, és hogyan változna a termelésed/egységáraid. **Fontos**: a fokozatszerzés véglegesen **visszaállítja a jelenlegi tokenjeidet, az összes megvásárolt egységet és a menet statisztikáit (Run Earned/Clicks/Time)**, cserébe a PhD-id és az ebből adódó bónuszok **véglegesen megmaradnak**, és minden jövőbeli menetedben érvényesülnek.
+A gombra kattintva egy megerősítő ablak jelenik meg, amely megmutatja, pontosan hány PhD-t kapnál, és hogyan változna a termelésed/egységáraid. **Fontos**: a fokozatszerzés véglegesen **visszaállítja a jelenlegi tokenjeidet, az összes megvásárolt egységet és fejlesztést, valamint a menet statisztikáit (Run Earned/Clicks/Time)**, cserébe a PhD-id és az ebből adódó bónuszok **véglegesen megmaradnak**, és minden jövőbeli menetedben érvényesülnek. Egy éppen aktív booster viszont túléli a fokozatszerzést — az egy időzített esemény, nem a menethez kötött haladás.
 
 Vendégként is fokozatot szerezhetsz — ilyenkor a megerősítő ablak egy külön figyelmeztetést mutat, hogy a PhD-id (a többi haladásoddal együtt) elvesznek, ha bezárod a lapot bejelentkezés nélkül.
 

@@ -14,7 +14,9 @@ const toast = useToastStore();
           class="toast-item"
           :class="entry.kind"
         >
-          <span class="toast-icon">{{ entry.kind === "success" ? "✓" : "⚠" }}</span>
+          <span class="toast-icon">{{
+            entry.kind === "success" ? "✓" : entry.kind === "booster" ? "⚡" : "⚠"
+          }}</span>
           <span class="toast-msg">{{ entry.message }}</span>
           <button class="toast-close" @click="toast.dismiss(entry.id)" aria-label="Dismiss">
             ✕
@@ -58,6 +60,7 @@ const toast = useToastStore();
 
 .toast-item.success { border-color: var(--success); }
 .toast-item.error { border-color: var(--danger); }
+.toast-item.booster { border-color: var(--booster); }
 
 .toast-icon {
   font-size: 14px;
@@ -65,6 +68,7 @@ const toast = useToastStore();
 }
 .toast-item.success .toast-icon { color: var(--success); }
 .toast-item.error .toast-icon { color: var(--danger); }
+.toast-item.booster .toast-icon { color: var(--booster); }
 
 .toast-msg {
   font-size: 13px;

@@ -1,6 +1,7 @@
 import express from "express";
 import { getSave, upsertSave, deleteSave, type UnitInput } from "../database/models/saveData";
 import { Responses } from "../constants/responses";
+import { isKnownUpgradeId } from "../constants/upgrades";
 
 interface SaveBody {
   tokens?: unknown;
@@ -13,6 +14,7 @@ interface SaveBody {
   runClicks?: unknown;
   runSeconds?: unknown;
   units?: unknown;
+  upgrades?: unknown;
 }
 
 function isValidUnits(units: unknown): units is UnitInput[] {
@@ -26,6 +28,22 @@ function isValidUnits(units: unknown): units is UnitInput[] {
       (entry["owned"] as number) >= 0
     );
   });
+}
+
+// Optional (older clients predate the upgrades system entirely), but a
+// *present* value must be an array of known upgrade ids — unlike unitId
+// (any string is accepted, since units are purely client-defined and never
+// validated server-side), upgrades ARE allowlisted here because the booster
+// system reads specific ids (conferenceBadge, departmentNewsletter) back off
+// this same data server-side (see database/models/boosters.ts).
+function isValidUpgrades(upgrades: unknown): upgrades is string[] | undefined {
+  if (upgrades === undefined) return true;
+  if (!Array.isArray(upgrades)) return false;
+  if (!upgrades.every((id) => isKnownUpgradeId(id))) return false;
+  // A duplicate id would otherwise reach upsertSave's createMany and throw
+  // on UpgradeSave's (gameSaveId, upgradeId) unique constraint — a 500, not
+  // the 400 a present-but-invalid value must get.
+  return new Set(upgrades).size === upgrades.length;
 }
 
 // MySQL/MariaDB signed INT range — phdCount, prestigeCount, and runClicks are
@@ -84,6 +102,7 @@ export const loadSave = async (req: express.Request, res: express.Response) => {
       return;
     }
 
+    const now = Date.now();
     res.status(200).json({
       save: {
         tokens: save.tokens,
@@ -96,7 +115,16 @@ export const loadSave = async (req: express.Request, res: express.Response) => {
         runClicks: save.runClicks,
         runSeconds: save.runSeconds,
         savedAt: save.savedAt,
-        units: save.units.map((u) => ({ unitId: u.unitId, owned: u.owned }))
+        units: save.units.map((u) => ({ unitId: u.unitId, owned: u.owned })),
+        upgrades: save.upgrades.map((u) => u.upgradeId),
+        // Read-only — see SaveInput's comment on why PUT /save can't touch
+        // this. remainingMs, never the row's absolute expiresAt: the client
+        // anchors it to its own clock the instant it's loaded (gameStore's
+        // loadFromSave), so server/client clock skew can't extend a buff.
+        activeBoosters: save.activeBoosters.map((b) => ({
+          boosterId: b.boosterId,
+          remainingMs: Math.max(0, b.expiresAt.getTime() - now)
+        }))
       }
     });
   } catch (error) {
@@ -129,7 +157,7 @@ export const loadSave = async (req: express.Request, res: express.Response) => {
  *             schema:
  *               $ref: '#/components/schemas/StoreSaveResponse'
  *       '400':
- *         description: Missing required fields, invalid units, or invalid (present but malformed) prestige fields
+ *         description: Missing required fields, or invalid (present but malformed) units, prestige fields, or upgrades
  *         content:
  *           application/json:
  *             schema:
@@ -158,7 +186,8 @@ export const storeSave = async (req: express.Request, res: express.Response) => 
       runTokensEarned,
       runClicks,
       runSeconds,
-      units
+      units,
+      upgrades
     } = req.body as SaveBody;
 
     if (
@@ -191,6 +220,12 @@ export const storeSave = async (req: express.Request, res: express.Response) => 
       return;
     }
 
+    if (!isValidUpgrades(upgrades)) {
+      const r = Responses.SAVE.INVALID_UPGRADES;
+      res.status(r.status).json(r.body);
+      return;
+    }
+
     const save = await upsertSave(userId, {
       tokens,
       totalTokensEarned,
@@ -201,7 +236,8 @@ export const storeSave = async (req: express.Request, res: express.Response) => 
       runTokensEarned,
       runClicks,
       runSeconds,
-      units
+      units,
+      upgrades
     });
 
     const r = Responses.SAVE.SAVE_SUCCESS;

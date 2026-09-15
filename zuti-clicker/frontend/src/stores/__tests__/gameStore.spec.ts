@@ -26,8 +26,9 @@ describe("gameStore", () => {
   describe("clickToken / tick update lifetime and run counters together", () => {
     it("clickToken adds to tokens, totalTokensEarned, and runTokensEarned; increments both click counters", () => {
       const game = useGameStore();
-      const earned = game.clickToken();
+      const { earned, crit } = game.clickToken();
       expect(earned).toBe(1);
+      expect(crit).toBe(false); // 0% crit chance with no crit upgrades owned
       expect(game.tokens).toBe(1);
       expect(game.totalTokensEarned).toBe(1);
       expect(game.runTokensEarned).toBe(1);
@@ -38,7 +39,7 @@ describe("gameStore", () => {
     it("clickToken reflects the production multiplier from banked PhDs", () => {
       const game = useGameStore();
       game.phdCount = 50; // multiplier = 1 + 0.02*50 = 2
-      const earned = game.clickToken();
+      const { earned } = game.clickToken();
       expect(earned).toBe(2);
       expect(game.tokens).toBe(2);
       expect(game.totalTokensEarned).toBe(2);
@@ -302,6 +303,179 @@ describe("gameStore", () => {
       expect(game.isUnitRevealed("theta")).toBe(false);
       game.totalTokensEarned = 33_000_000;
       expect(game.isUnitRevealed("theta")).toBe(true);
+    });
+  });
+
+  describe("upgrades", () => {
+    it("chalk is revealed at 25% of its 150-token cost", () => {
+      const game = useGameStore();
+      game.totalTokensEarned = 37; // 150 * 0.25 = 37.5
+      expect(game.isUpgradeRevealed("chalk")).toBe(false);
+      game.totalTokensEarned = 37.5;
+      expect(game.isUpgradeRevealed("chalk")).toBe(true);
+    });
+
+    it("buyUpgrade deducts cost once and marks it owned; a second buy is refused", () => {
+      const game = useGameStore();
+      game.tokens = 150;
+      expect(game.buyUpgrade("chalk")).toBe(true);
+      expect(game.tokens).toBe(0);
+      expect(game.isUpgradeOwned("chalk")).toBe(true);
+
+      game.tokens = 150;
+      expect(game.buyUpgrade("chalk")).toBe(false); // already owned
+      expect(game.tokens).toBe(150); // untouched
+    });
+
+    it("buyUpgrade is refused (and mutates nothing) when unaffordable or unknown", () => {
+      const game = useGameStore();
+      game.tokens = 100;
+      const before = JSON.parse(JSON.stringify(game.$state));
+
+      expect(game.buyUpgrade("chalk")).toBe(false); // costs 150, only have 100
+      expect(game.buyUpgrade("not-a-real-upgrade")).toBe(false);
+
+      expect(JSON.parse(JSON.stringify(game.$state))).toEqual(before);
+    });
+
+    it("owned flat/multiplier/synergy upgrades raise tokensPerClick", () => {
+      const game = useGameStore();
+      const baseline = game.tokensPerClick;
+      game.ownedUpgrades = ["chalk", "firmHandshake"];
+      // (1 + 1) * 2 = 4, vs baseline of 1
+      expect(game.tokensPerClick).toBeCloseTo(4, 9);
+      expect(game.tokensPerClick).toBeGreaterThan(baseline);
+    });
+
+    it("a crit roll multiplies the click by the best owned crit tier", () => {
+      const game = useGameStore();
+      game.ownedUpgrades = ["luckyGuess"]; // 5% chance, x3
+      const originalRandom = Math.random;
+      try {
+        Math.random = () => 0; // forces a crit (0 < 0.05)
+        const { earned, crit } = game.clickToken();
+        expect(crit).toBe(true);
+        expect(earned).toBeCloseTo(3, 9); // tokensPerClick(1) * critMultiplier(3)
+      } finally {
+        Math.random = originalRandom;
+      }
+    });
+  });
+
+  describe("boosters", () => {
+    it("grantBooster adds an active entry that boosts production", () => {
+      const game = useGameStore();
+      game.tokens = 1000;
+      game.buyUnit("alpha", 10); // 3/s baseline
+      const before = game.tokensPerSecond;
+
+      game.grantBooster("frenzy", 60_000);
+      expect(game.tokensPerSecond).toBeCloseTo(before * 7, 9);
+    });
+
+    it("reclaiming an already-active booster refreshes its timer instead of adding a second entry", () => {
+      const game = useGameStore();
+      game.grantBooster("frenzy", 1000);
+      game.grantBooster("frenzy", 60_000);
+      expect(game.activeBoosters).toHaveLength(1);
+      expect(game.activeBoosters[0]!.expiresAt).toBeGreaterThan(Date.now() + 50_000);
+    });
+
+    it("clearance discounts unit costs on top of the PhD discount", () => {
+      const game = useGameStore();
+      game.phdCount = 100; // 50% PhD discount alone
+      const costWithoutBooster = game.getBuyCost("alpha", 1);
+
+      game.grantBooster("clearance", 60_000); // additional -25%
+      const costWithBooster = game.getBuyCost("alpha", 1);
+
+      expect(costWithBooster).toBeCloseTo(costWithoutBooster * 0.75, 9);
+    });
+
+    it("an expired booster is swept out by tick() and its multiplier reverts", () => {
+      const game = useGameStore();
+      game.grantBooster("frenzy", -1); // already expired
+      game.tick(0.001);
+      expect(game.activeBoosters).toHaveLength(0);
+      expect(game.boosterProductionMultiplier).toBe(1);
+    });
+
+    it("prestige() does NOT clear active boosters (a timed event, not progression)", () => {
+      const game = useGameStore();
+      game.grantBooster("frenzy", 60_000);
+      game.runTokensEarned = 4_000_000;
+      game.prestige();
+      expect(game.activeBoosters).toHaveLength(1);
+    });
+
+    it("prestige() DOES clear owned upgrades", () => {
+      const game = useGameStore();
+      game.tokens = 150;
+      game.buyUpgrade("chalk");
+      game.runTokensEarned = 4_000_000;
+      game.prestige();
+      expect(game.ownedUpgrades).toEqual([]);
+    });
+
+    it("hardReset() clears both owned upgrades and active boosters", () => {
+      const game = useGameStore();
+      game.tokens = 150;
+      game.buyUpgrade("chalk");
+      game.grantBooster("frenzy", 60_000);
+
+      game.hardReset();
+
+      expect(game.ownedUpgrades).toEqual([]);
+      expect(game.activeBoosters).toEqual([]);
+    });
+  });
+
+  describe("upgrades/boosters in the save round-trip", () => {
+    it("toSavePayload includes owned upgrades; loadFromSave restores them", () => {
+      const game = useGameStore();
+      game.tokens = 150;
+      game.buyUpgrade("chalk");
+
+      const payload = game.toSavePayload();
+      expect(payload.upgrades).toEqual(["chalk"]);
+
+      game.hardReset();
+      game.loadFromSave(payload);
+      expect(game.ownedUpgrades).toEqual(["chalk"]);
+    });
+
+    it("a legacy save with no upgrades field defaults to an empty list (?? not ||)", () => {
+      const game = useGameStore();
+      game.loadFromSave({
+        tokens: 0,
+        totalTokensEarned: 0,
+        totalClicks: 0,
+        elapsedSeconds: 0,
+        units: []
+      });
+      expect(game.ownedUpgrades).toEqual([]);
+    });
+
+    it("loadFromSave restores an active booster's remaining time anchored to this client's clock", () => {
+      const game = useGameStore();
+      game.loadFromSave({
+        tokens: 0,
+        totalTokensEarned: 0,
+        totalClicks: 0,
+        elapsedSeconds: 0,
+        units: [],
+        activeBoosters: [{ boosterId: "frenzy", remainingMs: 30_000 }]
+      });
+      expect(game.activeBoosters).toHaveLength(1);
+      expect(game.activeBoosters[0]!.expiresAt).toBeGreaterThan(Date.now() + 25_000);
+      expect(game.activeBoosters[0]!.expiresAt).toBeLessThanOrEqual(Date.now() + 30_000);
+    });
+
+    it("toSavePayload never includes activeBoosters — that state is server/local-only, never asserted via PUT /save", () => {
+      const game = useGameStore();
+      game.grantBooster("frenzy", 60_000);
+      const payload = game.toSavePayload();
+      expect("activeBoosters" in payload).toBe(false);
     });
   });
 });

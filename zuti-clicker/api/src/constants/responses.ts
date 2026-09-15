@@ -32,9 +32,20 @@ export class Responses {
           "phdCount, prestigeCount, runTokensEarned, runClicks, and runSeconds must be non-negative numbers when provided."
       }
     },
+    INVALID_UPGRADES: {
+      status: 400,
+      body: { error: "upgrades must be an array of known upgrade ids." }
+    },
     NOT_FOUND: { status: 404, body: { save: null } },
     SAVE_SUCCESS: { status: 200, body: { message: "Save updated successfully." } },
     RESET_SUCCESS: { status: 200, body: { message: "Save reset successfully." } },
+    INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
+  } as const;
+
+  static readonly BOOSTER = {
+    NO_SAVE: { status: 404, body: { error: "No save exists yet — sync your progress first." } },
+    ON_COOLDOWN: { status: 409, body: { error: "No booster is available to claim yet." } },
+    CLAIM_SUCCESS: { status: 200, body: { message: "Booster claimed." } },
     INTERNAL_ERROR: { status: 500, body: { error: "Internal server error." } }
   } as const;
 
