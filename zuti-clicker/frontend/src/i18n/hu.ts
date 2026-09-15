@@ -115,6 +115,10 @@ export default {
       frenzy: "Értékelési Roham",
       clickStorm: "Röpdolgozat",
       clearance: "Eszközkiárusítás"
+  skin: {
+    title: "Kinézetek",
+    names: {
+      sahur: "Tung Tung Tung Sahur"
     }
   },
   settings: {

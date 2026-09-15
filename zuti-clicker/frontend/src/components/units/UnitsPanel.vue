@@ -7,6 +7,10 @@ import MultiplierSelector from "./MultiplierSelector.vue";
 import UnitCard from "./UnitCard.vue";
 import ShopTabs from "./ShopTabs.vue";
 import UpgradesPanel from "./UpgradesPanel.vue";
+import { SKIN_DEFINITIONS, UNIT_DEFINITIONS } from "@/utils/gameConstants";
+import MultiplierSelector from "./MultiplierSelector.vue";
+import UnitCard from "./UnitCard.vue";
+import SkinCard from "./SkinCard.vue";
 import type { Multiplier } from "@/types";
 
 const { t } = useI18n();
@@ -35,9 +39,16 @@ const multiplier = ref<Multiplier>(1);
         :multiplier="multiplier"
       />
     </div>
-    <div v-else class="units-list">
-      <UpgradesPanel />
+
+    <div class="panel-header">
+      <span class="panel-title">{{ t("skin.title") }}</span>
     </div>
+
+    <SkinCard
+      v-for="skin in SKIN_DEFINITIONS"
+      :key="skin.id"
+      :skin-id="skin.id"
+    />
   </aside>
 </template>
 

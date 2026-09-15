@@ -115,6 +115,10 @@ export default {
       frenzy: "Grading Frenzy",
       clickStorm: "Pop Quiz",
       clearance: "Equipment Clearance"
+  skin: {
+    title: "Skins",
+    names: {
+      sahur: "Tung Tung Tung Sahur"
     }
   },
   settings: {

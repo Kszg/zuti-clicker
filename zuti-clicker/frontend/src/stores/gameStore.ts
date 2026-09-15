@@ -7,6 +7,7 @@ import {
   UNIT_REVEAL_FRACTION,
   UPGRADE_REVEAL_FRACTION
 } from "@/utils/gameConstants";
+import { UNIT_DEFINITIONS, BASE_TOKENS_PER_CLICK, UNIT_REVEAL_FRACTION, SKIN_DEFINITIONS } from "@/utils/gameConstants";
 import { getUnitCost, getBulkCost, getMaxBuyable } from "@/utils/costCalculator";
 import {
   getPhdGain,
@@ -28,6 +29,7 @@ import {
   rollCrit
 } from "@/utils/upgrades";
 import type { UnitState, Multiplier, ActiveBoosterState, BoosterKind } from "@/types";
+import type { UnitState, Multiplier, SkinState } from "@/types";
 
 export interface GameSaveInput {
   tokens: number;
@@ -147,6 +149,12 @@ export const useGameStore = defineStore("game", () => {
   function clickToken(): { earned: number; crit: boolean } {
     const crit = rollCrit(critChance.value);
     const earned = crit ? tokensPerClick.value * critMultiplier.value : tokensPerClick.value;
+  // Skins
+  const skinStates = ref<SkinState[]>(SKIN_DEFINITIONS.map((d) => ({ id: d.id, owned: false })));
+  const activeSkinId = ref("");
+
+  function clickToken(): number {
+    const earned = tokensPerClick.value;
     tokens.value += earned;
     totalTokensEarned.value += earned;
     runTokensEarned.value += earned;
@@ -399,6 +407,8 @@ export const useGameStore = defineStore("game", () => {
     canPrestige,
     prestigeProgress,
     tokensToNextPhd,
+    skinStates,
+    activeSkinId,
     clickToken,
     getBuyCost,
     getProductionGain,

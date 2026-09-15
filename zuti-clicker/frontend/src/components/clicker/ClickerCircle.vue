@@ -121,7 +121,7 @@ function handleClick(e: MouseEvent) {
     <div ref="circleRef" class="circle">
       <div class="circle-inner">
         <img
-          src="@/assets/images/zutiy.jpg"
+          src="@/assets/images/skin/zutiy.jpg"
           alt="Dr. Zuti Pál, Digitális kor győztese"
           draggable="false"
         />

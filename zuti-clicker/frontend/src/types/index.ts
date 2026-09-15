@@ -5,6 +5,13 @@ export interface UnitDefinition {
   costGrowth: number;
 }
 
+export interface SkinDefinition {
+  id: string;
+  cost: number;
+  imagePath: string | null;
+  audioPath: string | null;
+}
+
 export interface UnitState {
   id: string;
   owned: number;
@@ -59,6 +66,13 @@ export interface BoosterDefinition {
 export interface ActiveBoosterState {
   id: string;
   expiresAt: number;
+export interface SkinState {
+  id: string;
+  owned: boolean;
+}
+
+export enum SkinButtonState {
+  Active, Owned, Buyable
 }
 
 export type Multiplier = 1 | 5 | 10 | 50 | "max";
